@@ -67,10 +67,12 @@ interface GameState {
   revealedBestStockId: string | null
   predictions: Record<string, 'up' | 'down'> | null
   lastTrade: { stockId: string; type: 'buy' | 'sell'; amount: number; price: number; prevPosition: { shares: number; avgBuyPrice: number } | null } | null
+  tradesThisTurn: number
   visitedShopThisTurn: boolean
 
   // 퀴즈 대출 (상점용)
   usedQuizIds: Set<string>
+  quizLoanUsedThisShop: boolean
 
   // 속보 시스템
   breakingNews: BreakingNewsData | null
@@ -168,8 +170,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   revealedBestStockId: null,
   predictions: null,
   lastTrade: null,
+  tradesThisTurn: 0,
   visitedShopThisTurn: false,
   usedQuizIds: new Set<string>(),
+  quizLoanUsedThisShop: false,
   breakingNews: null,
   breakingNewsDismissed: false,
   usedBreakingNewsIds: new Set<string>(),
@@ -236,8 +240,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       revealedBestStockId: null,
       predictions: null,
       lastTrade: null,
+      tradesThisTurn: 0,
       visitedShopThisTurn: false,
       usedQuizIds: new Set(),
+      quizLoanUsedThisShop: false,
       breakingNews: null,
       breakingNewsDismissed: false,
       usedBreakingNewsIds: new Set(),
@@ -299,13 +305,16 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   executeBuy: (stockId, amount) => {
-    const { portfolio, market } = get()
+    const { portfolio, market, tradesThisTurn, unlockedSkills } = get()
+    const tradeLimit = unlockedSkills.includes('double_trade') ? 2 : 1
+    if (tradesThisTurn >= tradeLimit) return
     const price = market.prices[stockId]
     if (!price) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
     const newPortfolio = buyStock(portfolio, stockId, price, amount)
     set({
       portfolio: newPortfolio,
+      tradesThisTurn: tradesThisTurn + 1,
       lastTrade: {
         stockId, type: 'buy', amount, price,
         prevPosition: prevPosition ? { shares: prevPosition.shares, avgBuyPrice: prevPosition.avgBuyPrice } : null,
@@ -314,15 +323,18 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   executeSell: (stockId, shares) => {
-    const { portfolio, market, currentWeeklyRule } = get()
+    const { portfolio, market, currentWeeklyRule, tradesThisTurn, unlockedSkills } = get()
     // 주간 규칙: 매도 금지
     if (currentWeeklyRule?.effect.type === 'no_selling') return
+    const tradeLimit = unlockedSkills.includes('double_trade') ? 2 : 1
+    if (tradesThisTurn >= tradeLimit) return
     const price = market.prices[stockId]
     if (!price) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
     const newPortfolio = sellStock(portfolio, stockId, price, shares)
     set({
       portfolio: newPortfolio,
+      tradesThisTurn: tradesThisTurn + 1,
       lastTrade: {
         stockId, type: 'sell', amount: shares, price,
         prevPosition: prevPosition ? { shares: prevPosition.shares, avgBuyPrice: prevPosition.avgBuyPrice } : null,
@@ -399,10 +411,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     // 저주 아이템 업사이드: 이자 3배
     const hasCursedGreed = equippedCursedItems.some(i => i.cursedEffect?.upside === 'triple_interest')
 
-    // 기본 이자: $1 per $5,000 현금, max $5/턴 (interest 스킬 시 max $10)
-    let interestCap = 5
-    if (unlockedSkills.includes('interest')) interestCap = 10
-    let interestEarned = Math.min(Math.floor(updatedPortfolio.cash / 5000), interestCap)
+    // 기본 이자: $1 per $2,000 현금, max $10/턴 (interest 스킬 시 max $25)
+    let interestCap = 10
+    if (unlockedSkills.includes('interest')) interestCap = 25
+    let interestEarned = Math.min(Math.floor(updatedPortfolio.cash / 2000), interestCap)
     if (hasCursedGreed) interestEarned *= 3 // 저주: 탐욕의 반지
     if (interestEarned > 0) {
       updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + interestEarned }
@@ -428,9 +440,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     // 저주 아이템 다운사이드 처리
     for (const cursed of equippedCursedItems) {
       switch (cursed.cursedEffect?.downside) {
-        case 'drain_rp_per_turn':
-          updatedPortfolio = { ...updatedPortfolio, reputationPoints: Math.max(0, updatedPortfolio.reputationPoints - 1) }
+        case 'drain_rp_per_turn': {
+          const drainAmount = cursed.cursedEffect?.drainAmount ?? 1
+          updatedPortfolio = { ...updatedPortfolio, reputationPoints: Math.max(0, updatedPortfolio.reputationPoints - drainAmount) }
           break
+        }
         case 'cash_decay_1_percent':
           updatedPortfolio = { ...updatedPortfolio, cash: Math.floor(updatedPortfolio.cash * 0.99) }
           break
@@ -449,19 +463,20 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     // 저주 아이템 업사이드: 수익 증폭
-    if (equippedCursedItems.some(i => i.cursedEffect?.upside === 'amplify_gains_1.5x')) {
+    if (equippedCursedItems.some(i => i.cursedEffect?.upside === 'amplify_gains_1.8x' || i.cursedEffect?.upside === 'amplify_gains_1.5x')) {
+      const gainMult = equippedCursedItems.some(i => i.cursedEffect?.upside === 'amplify_gains_1.8x') ? 0.8 : 0.5
       for (const pos of updatedPortfolio.positions) {
         const prev = prevPrices[pos.stockId] || 0
         const curr = newMarket.prices[pos.stockId] || 0
         if (curr > prev) {
-          const extraGain = (curr - prev) * pos.shares * 0.5
+          const extraGain = (curr - prev) * pos.shares * gainMult
           updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + extraGain }
         }
       }
     }
 
-    // 평판 포인트 계산
-    let rpEarned = 1
+    // 평판 포인트 계산 (기본 2)
+    let rpEarned = 2
     for (const pos of updatedPortfolio.positions) {
       const prevPrice = market.prices[pos.stockId] || 0
       const newPrice = newMarket.prices[pos.stockId] || 0
@@ -527,7 +542,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         screen: 'result',
         meta,
         stats: {
-          ...currentStats,
+          ...get().stats,
           totalTurns: turn,
         },
       })
@@ -537,7 +552,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     // 상점 턴 체크 (매 13턴)
     if (newTurn % 13 === 0) {
       const shopItems = generateShopItems(runConfig.runNumber, 3)
-      set({ screen: 'shop', turn: newTurn, shopItems, shopSource: 'auto' as const, shopRerollCount: 0 })
+      set({ screen: 'shop', turn: newTurn, shopItems, shopSource: 'auto' as const, shopRerollCount: 0, quizLoanUsedThisShop: false })
       return
     }
 
@@ -630,6 +645,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       revealedBestStockId: bestStockId,
       predictions: null,
       lastTrade: null,
+      tradesThisTurn: 0,
       visitedShopThisTurn: false,
       currentWeeklyRule: weeklyRule,
       usedWeeklyRuleIds: newUsedWeeklyRuleIds,
@@ -761,9 +777,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     const updates: Partial<GameState> = { inventory: newInventory }
 
     switch (item.effect) {
-      case 'cash_500':
-        updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + 500 }
+      case 'cash_boost_percent':
+      case 'cash_500': {
+        const portfolioValue = updatedPortfolio.cash + updatedPortfolio.positions.reduce((sum, p) => {
+          return sum + (market.prices[p.stockId] || 0) * p.shares
+        }, 0)
+        const boost = item.effect === 'cash_boost_percent' ? Math.floor(portfolioValue * 0.05) : 500
+        updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + boost }
         break
+      }
 
       case 'reveal_one_news': {
         // Reveal a random unrevealed news's real/fake status
@@ -860,14 +882,16 @@ export const useGameStore = create<GameState>((set, get) => ({
         break
       }
 
+      case 'predict_5_turns':
       case 'predict_3_turns': {
         // Generate predictions based on market momentum
+        const lookback = item.effect === 'predict_5_turns' ? 5 : 3
         const preds: Record<string, 'up' | 'down'> = {}
         for (const hist of market.priceHistories) {
           const prices = hist.prices
-          if (prices.length < 3) continue
-          const recent = prices.slice(-3)
-          const avgChange = (recent[2] - recent[0]) / recent[0]
+          if (prices.length < lookback) continue
+          const recent = prices.slice(-lookback)
+          const avgChange = (recent[recent.length - 1] - recent[0]) / recent[0]
           preds[hist.stockId] = avgChange >= 0 ? 'up' : 'down'
         }
         updates.predictions = preds
@@ -905,22 +929,35 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   attemptQuizLoan: (quizId, answerIndex, shortfall) => {
-    const { usedQuizIds, portfolio } = get()
+    const { usedQuizIds, portfolio, quizLoanUsedThisShop } = get()
+
+    // 상점 방문당 퀴즈 론 1회 제한
+    if (quizLoanUsedThisShop) return false
+
     const newUsedIds = new Set(usedQuizIds)
     newUsedIds.add(quizId)
 
     const quiz = QUIZ_EVENTS.find((q) => q.id === quizId)
     if (!quiz) { set({ usedQuizIds: newUsedIds }); return false }
 
+    // 최대 보전: 아이템 비용의 50%까지
+    const cappedShortfall = Math.min(shortfall, Math.ceil(shortfall * 2 * 0.5))
+
     const isCorrect = answerIndex === quiz.correctIndex
     if (isCorrect) {
       set({
         usedQuizIds: newUsedIds,
-        portfolio: awardReputation(portfolio, shortfall),
+        quizLoanUsedThisShop: true,
+        portfolio: awardReputation(portfolio, cappedShortfall),
       })
       return true
     } else {
-      set({ usedQuizIds: newUsedIds })
+      // 오답 시 -2 RP 페널티
+      set({
+        usedQuizIds: newUsedIds,
+        quizLoanUsedThisShop: true,
+        portfolio: { ...portfolio, reputationPoints: Math.max(0, portfolio.reputationPoints - 2) },
+      })
       return false
     }
   },
@@ -1025,9 +1062,9 @@ function generateInfiniteConfig(runNumber: number): import('../data/types').RunC
   return {
     runNumber,
     name,
-    targetReturn: Math.min(0.30 + wave * 0.05, 1.0),  // 35%, 40%, 45%... max 100%
-    volatilityMultiplier: 2.5 + wave * 0.4,            // 2.9, 3.3, 3.7...
-    fakeNewsRatio: Math.min(0.40 + wave * 0.05, 0.8),  // 45%, 50%, 55%... max 80%
+    targetReturn: Math.min(0.30 + 0.05 * Math.log2(wave + 1), 0.60),  // 로그 스케일, max 60%
+    volatilityMultiplier: 2.5 + 0.3 * Math.sqrt(wave),               // 제곱근 스케일
+    fakeNewsRatio: Math.min(0.40 + wave * 0.05, 0.80),               // 45%, 50%... max 80%
     maxTurns: 52,
   }
 }

@@ -26,34 +26,34 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     target: null,
     title: '자, 첫 업무다',
-    text: '매주 뉴스를 읽고, 분석하고, 투자 판단을 내리는 게 네 할 일이야. 하나씩 짚어줄 테니까 따라와.',
+    text: '매주 뉴스를 읽고, 분석하고, 투자 판단을 내리는 게 네 할 일이야. 게임은 "뉴스 → 투자 → 결과" 3단계로 돌아가. 하나씩 짚어줄게.',
   },
   {
     target: '[data-tutorial="news-panel"]',
-    title: '뉴스 확인',
-    text: '여기에 이번 주 뉴스가 와 있어. 출처를 잘 봐 — 공영방송이랑 익명 블로그는 신뢰도가 다르니까.',
+    title: '뉴스 패널',
+    text: '매주 새 뉴스가 도착해. 핵심은 "출처"야. 공영방송·경제지는 신뢰도가 높고, SNS·익명 블로그는 가짜일 수 있어. 출처 아이콘을 주의 깊게 봐.',
     position: 'right',
     phase: 'news',
   },
   {
     target: '[data-tutorial="news-item"]',
-    title: '직접 읽어봐',
-    text: '아무 기사나 하나 눌러봐. 내용을 파악하는 게 투자의 첫걸음이야.',
+    title: '기사를 눌러봐',
+    text: '기사를 누르면 상세 내용이 펼쳐져. 어떤 섹터에 영향을 주는지, 진짜 뉴스인지 판단하는 연습을 하는 거야.',
     position: 'right',
     phase: 'news',
     waitForClick: true,
   },
   {
     target: '[data-tutorial="mini-stock-strip"]',
-    title: '시세 한눈에',
-    text: '여기서 종목별 현재가와 등락률을 바로 확인할 수 있어. 습관적으로 체크해.',
+    title: '실시간 시세 바',
+    text: '종목별 현재가와 등락률이 여기 표시돼. 뉴스를 읽으면서 "어떤 종목이 영향받을까?" 시세를 같이 확인하는 습관을 들여.',
     position: 'top',
     phase: 'news',
   },
   {
     target: '[data-tutorial="phase-cta"]',
-    title: '분석 끝, 투자 시작',
-    text: '뉴스 다 읽었으면 이 버튼 눌러. 투자 판단을 내릴 시간이야.',
+    title: '투자 단계로 넘어가기',
+    text: '뉴스 분석이 끝나면 이 버튼을 눌러서 투자 단계로 넘어가. 준비됐으면 눌러봐!',
     position: 'top',
     phase: 'news',
     waitForClick: true,
@@ -61,36 +61,36 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   // ── 투자 페이즈 ──
   {
     target: '[data-tutorial="stock-sidebar"]',
-    title: '종목 고르기',
-    text: '투자할 종목을 여기서 골라. 섹터별로 필터링도 되니까 활용해봐.',
+    title: '종목 리스트',
+    text: '투자할 종목을 여기서 골라. 기술·에너지·금융·소비재·헬스케어 5개 섹터가 있고, ETF도 있어. 분산투자가 리스크 관리의 기본이야.',
     position: 'left',
     phase: 'investment',
   },
   {
     target: '[data-tutorial="chart-panel"]',
-    title: '차트를 읽어',
-    text: '선택한 종목의 가격 흐름이야. 추세를 읽는 눈을 키우는 게 핵심이야.',
+    title: '가격 차트',
+    text: '선택한 종목의 주가 흐름이야. 상승 추세인지, 하락 추세인지 읽어봐. 나중에 "기술적 분석" 스킬을 배우면 이동평균선도 볼 수 있어.',
     position: 'bottom',
     phase: 'investment',
   },
   {
     target: '[data-tutorial="trade-panel"]',
-    title: '매수/매도 실행',
-    text: '여기서 주식을 사고팔아. 수량 정하고, 확신이 서면 바로 실행해.',
+    title: '매수/매도',
+    text: '여기서 주식을 사고팔아. 턴당 거래 횟수가 제한되니까 신중하게! 25%, 50%, 전량 버튼으로 빠르게 수량을 정할 수 있어.',
     position: 'top',
     phase: 'investment',
   },
   {
     target: '[data-tutorial="asset-bar"]',
-    title: '네 자산 상태',
-    text: '현금, 수익률, 평판 포인트. 네 성적표라고 생각해. 수시로 확인해.',
+    title: '자산 현황',
+    text: '현금, 수익률, 평판 포인트(RP)가 표시돼. RP는 스킬과 아이템을 구매하는 데 쓰여. 매 턴 뉴스를 정확히 분석할수록 RP가 올라가.',
     position: 'bottom',
     phase: 'investment',
   },
   {
     target: '[data-tutorial="phase-cta"]',
     title: '한 주 마감',
-    text: '투자 끝났으면 이 버튼으로 마감해. 시장 결과가 나올 거야. 긴장해봐.',
+    text: '투자를 마쳤으면 이 버튼으로 주간을 마감해. 시장이 움직이고, 네 투자 결과가 나올 거야. 눌러봐!',
     position: 'top',
     phase: 'investment',
     waitForClick: true,
@@ -165,13 +165,20 @@ export function SpotlightTutorial() {
     }
   }, [showTutorial, step, updateTargetRect])
 
-  // waitForClick: 타겟 요소 클릭 감지
+  // waitForClick: 타겟 요소 클릭 감지 (좌표 기반 — 오버레이 위에서도 동작)
   useEffect(() => {
     if (!showTutorial || !step?.waitForClick || !step.target) return
 
     const handleClick = (e: MouseEvent) => {
-      const target = document.querySelector(step.target!)
-      if (target && (target.contains(e.target as Node) || target === e.target)) {
+      const el = document.querySelector(step.target!)
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const inBounds =
+        e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top && e.clientY <= rect.bottom
+      if (inBounds) {
+        // 실제 요소에도 클릭 전달
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
         setTimeout(() => {
           SFX.click()
           advanceTutorial()
@@ -189,11 +196,12 @@ export function SpotlightTutorial() {
   // phase 조건 체크
   if (step.phase && step.phase !== phase) return null
 
-  const padding = 8
+  const padding = 10
   const hasTarget = !!targetRect
 
-  // 툴팁 위치 계산 (화면 밖으로 나가면 fallback)
-  const tooltipWidth = 280 // max-w-xs ≈ 280px
+  // 툴팁 위치 계산 — 뷰포트 안에 완전히 수납
+  const tooltipWidth = 300
+  const tooltipHeight = 180
   const getTooltipStyle = (): React.CSSProperties => {
     if (!targetRect) {
       return {
@@ -202,39 +210,68 @@ export function SpotlightTutorial() {
       }
     }
 
-    let pos = step.position || 'bottom'
-    const gap = 16
+    const gap = 14
+    const safeMargin = 10
     const vw = window.innerWidth
     const vh = window.innerHeight
 
-    // overflow 검사 → fallback to bottom
-    if (pos === 'right' && targetRect.right + gap + tooltipWidth > vw) pos = 'bottom'
-    if (pos === 'left' && targetRect.left - gap - tooltipWidth < 0) pos = 'bottom'
+    // 타겟의 "보이는 영역" 중심 (타겟이 뷰포트보다 클 경우 대비)
+    const visibleTop = Math.max(targetRect.top, 0)
+    const visibleBottom = Math.min(targetRect.bottom, vh)
+    const visibleLeft = Math.max(targetRect.left, 0)
+    const visibleRight = Math.min(targetRect.right, vw)
+    const centerX = (visibleLeft + visibleRight) / 2
+    const centerY = (visibleTop + visibleBottom) / 2
+
+    // 각 방향에 얼마나 공간이 있는지 계산
+    const spaceTop = visibleTop
+    const spaceBottom = vh - visibleBottom
+    const spaceLeft = visibleLeft
+    const spaceRight = vw - visibleRight
+
+    // 원하는 위치에서 시작, 공간 부족 시 순환 fallback
+    const preferred = step.position || 'bottom'
+    const order: typeof preferred[] =
+      preferred === 'top' ? ['top', 'bottom', 'right', 'left'] :
+      preferred === 'bottom' ? ['bottom', 'top', 'right', 'left'] :
+      preferred === 'left' ? ['left', 'right', 'bottom', 'top'] :
+      ['right', 'left', 'bottom', 'top']
+
+    let pos = preferred
+    for (const candidate of order) {
+      if (candidate === 'top' && spaceTop >= tooltipHeight + gap) { pos = 'top'; break }
+      if (candidate === 'bottom' && spaceBottom >= tooltipHeight + gap) { pos = 'bottom'; break }
+      if (candidate === 'left' && spaceLeft >= tooltipWidth + gap) { pos = 'left'; break }
+      if (candidate === 'right' && spaceRight >= tooltipWidth + gap) { pos = 'right'; break }
+    }
+
+    // 수평 clamping 헬퍼
+    const clampX = (x: number) =>
+      Math.min(Math.max(x, safeMargin), vw - tooltipWidth - safeMargin)
+    // 수직 clamping 헬퍼
+    const clampY = (y: number) =>
+      Math.min(Math.max(y, safeMargin), vh - tooltipHeight - safeMargin)
 
     switch (pos) {
       case 'top':
         return {
-          bottom: `${vh - targetRect.top + gap}px`,
-          left: `${Math.min(Math.max(targetRect.left + targetRect.width / 2, tooltipWidth / 2 + 8), vw - tooltipWidth / 2 - 8)}px`,
-          transform: 'translateX(-50%)',
+          bottom: `${vh - visibleTop + gap}px`,
+          left: `${clampX(centerX - tooltipWidth / 2)}px`,
         }
       case 'bottom':
         return {
-          top: `${targetRect.bottom + gap}px`,
-          left: `${Math.min(Math.max(targetRect.left + targetRect.width / 2, tooltipWidth / 2 + 8), vw - tooltipWidth / 2 - 8)}px`,
-          transform: 'translateX(-50%)',
+          top: `${Math.min(visibleBottom + gap, vh - tooltipHeight - safeMargin)}px`,
+          left: `${clampX(centerX - tooltipWidth / 2)}px`,
         }
       case 'left':
         return {
-          top: `${targetRect.top + targetRect.height / 2}px`,
-          right: `${vw - targetRect.left + gap}px`,
-          transform: 'translateY(-50%)',
+          top: `${clampY(centerY - tooltipHeight / 2)}px`,
+          right: `${vw - visibleLeft + gap}px`,
         }
       case 'right':
         return {
-          top: `${targetRect.top + targetRect.height / 2}px`,
-          left: `${targetRect.right + gap}px`,
-          transform: 'translateY(-50%)',
+          top: `${clampY(centerY - tooltipHeight / 2)}px`,
+          left: `${Math.min(visibleRight + gap, vw - tooltipWidth - safeMargin)}px`,
         }
     }
   }
@@ -257,33 +294,58 @@ export function SpotlightTutorial() {
               />
             )}
           </mask>
+          {/* 하이라이트 글로우 필터 */}
+          <filter id="spotlight-glow">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
         <rect
           width="100%" height="100%"
-          fill="rgba(0,0,0,0.75)"
+          fill="rgba(0,0,0,0.78)"
           mask="url(#spotlight-mask)"
         />
       </svg>
 
-      {/* 하이라이트 테두리 */}
+      {/* 하이라이트 외곽 글로우 + 펄스 애니메이션 */}
       {hasTarget && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="absolute pointer-events-none rounded-xl"
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="absolute pointer-events-none"
           style={{
             left: targetRect!.left - padding,
             top: targetRect!.top - padding,
             width: targetRect!.width + padding * 2,
             height: targetRect!.height + padding * 2,
-            border: '2px solid rgba(240, 180, 41, 0.6)',
-            boxShadow: '0 0 20px rgba(240, 180, 41, 0.2)',
           }}
-        />
+        >
+          {/* 외곽 글로우 */}
+          <div
+            className="absolute inset-0 rounded-xl"
+            style={{
+              border: '2px solid rgba(240, 180, 41, 0.7)',
+              boxShadow: '0 0 24px 4px rgba(240, 180, 41, 0.25), inset 0 0 12px rgba(240, 180, 41, 0.08)',
+            }}
+          />
+          {/* 펄스 링 */}
+          <motion.div
+            className="absolute inset-0 rounded-xl"
+            animate={{ opacity: [0.5, 0, 0.5], scale: [1, 1.04, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            style={{
+              border: '1px solid rgba(240, 180, 41, 0.4)',
+            }}
+          />
+        </motion.div>
       )}
 
-      {/* 타겟 요소는 클릭 가능하게 */}
-      {hasTarget && (
+      {/* 타겟 요소 클릭 통과 영역 */}
+      {hasTarget && step.waitForClick && (
         <div
           className="absolute"
           style={{
@@ -291,7 +353,28 @@ export function SpotlightTutorial() {
             top: targetRect!.top - padding,
             width: targetRect!.width + padding * 2,
             height: targetRect!.height + padding * 2,
-            pointerEvents: step.waitForClick ? 'none' : 'none',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      {/* 화살표 연결선 (타겟 → 툴팁) */}
+      {hasTarget && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.5 }}
+          transition={{ delay: 0.3, duration: 0.3 }}
+          className="absolute pointer-events-none"
+          style={{
+            left: targetRect!.left + targetRect!.width / 2 - 1,
+            top: step.position === 'top'
+              ? targetRect!.top - padding - 8
+              : step.position === 'bottom' || !step.position
+                ? targetRect!.bottom + padding
+                : targetRect!.top + targetRect!.height / 2 - 1,
+            width: (step.position === 'left' || step.position === 'right') ? 8 : 2,
+            height: (step.position === 'left' || step.position === 'right') ? 2 : 8,
+            background: 'linear-gradient(to bottom, rgba(240,180,41,0.6), transparent)',
           }}
         />
       )}
@@ -299,24 +382,29 @@ export function SpotlightTutorial() {
       {/* 툴팁 */}
       <motion.div
         key={tutorialStep}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.25 }}
-        className="absolute z-10 max-w-xs"
-        style={getTooltipStyle()}
+        initial={{ opacity: 0, y: 8, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -8, scale: 0.96 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="absolute z-10"
+        style={{ ...getTooltipStyle(), width: tooltipWidth }}
       >
         <div
-          className="bg-[#1a1a2e] border border-[#f0b42944] rounded-xl px-5 py-4"
-          style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+          className="rounded-xl px-5 py-4"
+          style={{
+            background: 'linear-gradient(145deg, rgba(26,26,46,0.97), rgba(20,20,38,0.97))',
+            border: '1px solid rgba(240, 180, 41, 0.3)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.6), 0 0 20px rgba(240,180,41,0.08)',
+            backdropFilter: 'blur(8px)',
+          }}
         >
           {/* 화자 */}
-          <span className="text-[#c4a0ff] text-[10px] font-bold mb-2 block">???</span>
+          <span className="text-[#c4a0ff] text-[10px] font-bold mb-1 block tracking-wider">???</span>
 
-          <h3 className="text-white text-sm font-bold mb-2">{step.title}</h3>
-          <p className="text-bal-text text-xs leading-relaxed mb-4">
+          <h3 className="text-white text-[15px] font-bold mb-2 leading-snug">{step.title}</h3>
+          <p className="text-[#b8b8d0] text-[13px] leading-[1.7] mb-4">
             {displayedText}
-            {isTyping && <span className="inline-block w-[2px] h-3 bg-[#f0b429] ml-0.5 animate-pulse align-middle" />}
+            {isTyping && <span className="inline-block w-[2px] h-3.5 bg-[#f0b429] ml-0.5 animate-pulse align-middle" />}
           </p>
 
           <AnimatePresence>
@@ -329,7 +417,7 @@ export function SpotlightTutorial() {
               >
                 <button
                   onClick={() => { SFX.click(); dismissTutorial() }}
-                  className="flex-1 text-[10px] text-bal-text-dim py-1.5 px-3 rounded-lg hover:bg-white/5 transition-colors"
+                  className="flex-1 text-[11px] text-[#666680] py-2 px-3 rounded-lg hover:bg-white/5 hover:text-[#888] transition-colors"
                 >
                   건너뛰기
                 </button>
@@ -343,15 +431,23 @@ export function SpotlightTutorial() {
                         advanceTutorial()
                       }
                     }}
-                    className="flex-1 text-[10px] text-[#0a0a14] font-bold py-1.5 px-3 rounded-lg bg-[#f0b429] hover:bg-[#d9a325] transition-colors"
+                    className="flex-1 text-[11px] text-[#0a0a14] font-bold py-2 px-3 rounded-lg transition-all"
+                    style={{
+                      background: 'linear-gradient(135deg, #f0b429, #e09a18)',
+                      boxShadow: '0 2px 8px rgba(240,180,41,0.3)',
+                    }}
                   >
-                    {tutorialStep >= TUTORIAL_STEPS.length - 1 ? '완료' : '다음'}
+                    {tutorialStep >= TUTORIAL_STEPS.length - 1 ? '시작하자!' : '다음'}
                   </button>
                 )}
                 {step.waitForClick && (
-                  <span className="flex-1 text-[10px] text-[#f0b429] py-1.5 px-3 text-center animate-pulse">
+                  <motion.span
+                    animate={{ opacity: [0.6, 1, 0.6] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="flex-1 text-[11px] text-[#f0b429] py-2 px-3 text-center font-bold"
+                  >
                     직접 눌러보세요
-                  </span>
+                  </motion.span>
                 )}
               </motion.div>
             )}

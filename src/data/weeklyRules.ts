@@ -62,9 +62,9 @@ export const WEEKLY_RULES: WeeklyRule[] = [
   {
     id: 'flash_crash_risk',
     name: '플래시 크래시 경보',
-    description: '이번 주 30% 확률로 급락이 발생합니다',
+    description: '이번 주 일부 종목에 급락이 발생할 수 있습니다',
     icon: '⚡',
-    effect: { type: 'flash_crash_risk', probability: 0.3 },
+    effect: { type: 'flash_crash_risk', probability: 0.15 },
     minQuarter: 5,
   },
 ]

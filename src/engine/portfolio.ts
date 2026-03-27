@@ -24,7 +24,8 @@ export function buyStock(
   const shares = Math.floor(amount / price)
   if (shares <= 0) return portfolio
 
-  const totalCost = shares * price
+  const TRADE_FEE = 0.005 // 0.5% 수수료
+  const totalCost = shares * price * (1 + TRADE_FEE)
   if (totalCost > portfolio.cash) return portfolio
 
   const existingIdx = portfolio.positions.findIndex((p) => p.stockId === stockId)
@@ -71,7 +72,8 @@ export function sellStock(
   const actualShares = Math.min(sharesToSell, position.shares)
   if (actualShares <= 0) return portfolio
 
-  const revenue = actualShares * price
+  const TRADE_FEE = 0.005 // 0.5% 수수료
+  const revenue = actualShares * price * (1 - TRADE_FEE)
   const newPositions = [...portfolio.positions]
 
   if (actualShares >= position.shares) {

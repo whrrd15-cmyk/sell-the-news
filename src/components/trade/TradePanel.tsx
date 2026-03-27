@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
 import type { Stock, Portfolio, Position } from '../../data/types'
-import { SECTOR_COLORS, SECTOR_LABELS } from '../../data/constants'
 
 interface TradePanelProps {
   stock: Stock | null
@@ -12,11 +11,13 @@ interface TradePanelProps {
   onBuy: (stockId: string, amount: number) => void
   onSell: (stockId: string, shares: number) => void
   sellDisabled?: boolean
+  tradesRemaining: number
+  tradeLimit: number
 }
 
 export function TradePanel({
   stock, currentPrice, priceChange, portfolio, position,
-  phase, onBuy, onSell, sellDisabled,
+  phase, onBuy, onSell, sellDisabled, tradesRemaining, tradeLimit,
 }: TradePanelProps) {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy')
   const [quantity, setQuantity] = useState(0)
@@ -173,20 +174,37 @@ export function TradePanel({
               </div>
             )}
 
+            {/* 남은 거래 횟수 */}
+            <div className="flex items-center justify-center gap-1 text-[10px]">
+              <span className="text-bal-text-dim">거래</span>
+              {Array.from({ length: tradeLimit }, (_, i) => (
+                <span
+                  key={i}
+                  className={`w-2 h-2 rounded-full ${i < tradesRemaining ? 'bg-[#f0b429]' : 'bg-[#ffffff15]'}`}
+                />
+              ))}
+              <span className={tradesRemaining > 0 ? 'text-[#f0b429]' : 'text-bal-red'}>{tradesRemaining}/{tradeLimit}</span>
+            </div>
+
             {/* 실행 버튼 */}
             <button
               className={`w-full py-2 text-xs font-bold rounded-lg transition-all ${
-                quantity > 0 ? '' : 'opacity-30 cursor-not-allowed'
+                quantity > 0 && tradesRemaining > 0 ? '' : 'opacity-30 cursor-not-allowed'
               }`}
               style={{
-                background: quantity > 0 ? accentColor : 'var(--color-bal-panel-light)',
-                color: quantity > 0 ? '#1a1a2e' : 'var(--color-bal-text-dim)',
+                background: quantity > 0 && tradesRemaining > 0 ? accentColor : 'var(--color-bal-panel-light)',
+                color: quantity > 0 && tradesRemaining > 0 ? '#1a1a2e' : 'var(--color-bal-text-dim)',
               }}
               onClick={handleExecute}
-              disabled={quantity <= 0}
+              disabled={quantity <= 0 || tradesRemaining <= 0}
             >
-              {mode === 'buy' ? '매수' : '매도'}
-              {quantity > 0 && ` ${quantity}주 ($${Math.floor(orderAmount).toLocaleString()})`}
+              {tradesRemaining <= 0
+                ? '거래 횟수 소진'
+                : <>
+                    {mode === 'buy' ? '매수' : '매도'}
+                    {quantity > 0 && ` ${quantity}주 ($${Math.floor(orderAmount).toLocaleString()})`}
+                  </>
+              }
             </button>
           </div>
         ) : (

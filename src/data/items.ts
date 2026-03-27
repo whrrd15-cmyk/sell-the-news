@@ -23,12 +23,12 @@ export const ITEMS: Item[] = [
   },
   {
     id: 'cash_boost_small',
-    name: '소액 지원금',
-    description: '즉시 $500를 받습니다',
+    name: '긴급 지원금',
+    description: '현재 포트폴리오의 5%를 현금으로 받습니다',
     rarity: 'common',
     cost: 5,
     isConsumable: true,
-    effect: 'cash_500',
+    effect: 'cash_boost_percent',
   },
 
   // ===== Uncommon =====
@@ -84,11 +84,11 @@ export const ITEMS: Item[] = [
   {
     id: 'crystal_ball',
     name: '수정 구슬',
-    description: '3턴 후의 주가 방향을 미리 봅니다',
+    description: '5턴 후의 주가 방향을 미리 봅니다',
     rarity: 'legendary',
-    cost: 50,
+    cost: 30,
     isConsumable: true,
-    effect: 'predict_3_turns',
+    effect: 'predict_5_turns',
   },
 ]
 

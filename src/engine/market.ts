@@ -129,12 +129,20 @@ function updatePanicLevel(
 ): number {
   const values = Object.values(priceChanges)
   const droppingCount = values.filter((v) => v < -0.03).length
+  const risingCount = values.filter((v) => v > 0.03).length
   const avgChange = values.reduce((a, b) => a + b, 0) / (values.length || 1)
 
+  let next = current
   if (droppingCount >= 3 || avgChange < -0.05) {
-    return Math.min(1.0, current + 0.2)
+    next = current + 0.15
+  } else {
+    next = current - 0.10
   }
-  return Math.max(0, current - 0.05)
+  // 반등 보너스: 상승 종목이 있으면 패닉 추가 감소
+  if (risingCount > 0 && current > 0) {
+    next -= 0.05
+  }
+  return Math.max(0, Math.min(0.7, next))
 }
 
 // ─── 메인 시뮬레이션 ──────────────────────────────────────
@@ -178,10 +186,17 @@ export function simulateTurn(
   const weeklyDoubleRate =
     weeklyRule?.effect.type === 'double_or_nothing'
 
-  // 플래시 크래시 체크
-  let flashCrashActive = false
+  // 플래시 크래시 체크 (1~3개 랜덤 종목에만 적용)
+  const flashCrashTargets = new Set<string>()
   if (weeklyRule?.effect.type === 'flash_crash_risk') {
-    flashCrashActive = rng() < weeklyRule.effect.probability
+    if (rng() < 0.15) {
+      const nonETF = STOCKS.filter(s => !s.isETF)
+      const count = 1 + Math.floor(rng() * 3) // 1~3개
+      const shuffled = [...nonETF].sort(() => rng() - 0.5)
+      for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+        flashCrashTargets.add(shuffled[i].id)
+      }
+    }
   }
 
   // 2. 각 주식 가격 업데이트
@@ -203,11 +218,11 @@ export function simulateTurn(
       state.herdSentiment * 0.01 * (1 + Math.abs(rawMomentum))
 
     // 패닉 시 하락 모멘텀 가속
-    const panicMult = 1 + state.panicLevel * 0.5
+    const panicMult = 1 + state.panicLevel * 0.3
     const momentum = rawMomentum < 0 ? rawMomentum * panicMult : rawMomentum
 
     // 평균 회귀 (위험도 높으면 강화, 패닉 시 약화)
-    const meanRevStr = (0.02 + state.dangerLevel * 0.03) * (1 - state.panicLevel * 0.5)
+    const meanRevStr = (0.02 + state.dangerLevel * 0.015) * (1 - state.panicLevel * 0.5)
     const meanReversion = ((stock.basePrice - currentPrice) / stock.basePrice) * meanRevStr
 
     // 랜덤 노이즈 (위험도 + 주간 규칙 반영)
@@ -225,13 +240,13 @@ export function simulateTurn(
     // 주간 규칙: 더블 오어 낫싱
     if (weeklyDoubleRate) changeRate *= 2
 
-    // 플래시 크래시
-    if (flashCrashActive) changeRate -= 0.1 + rng() * 0.1
+    // 플래시 크래시 (해당 종목만, 최대 -10%)
+    if (flashCrashTargets.has(stock.id)) changeRate -= 0.1
 
     // 버블 팝 체크
     const bubbleLevel = state.sectorBubble[stock.sector] || 0
     if (bubbleLevel > 0.8 && rng() < (bubbleLevel - 0.8) * 0.5) {
-      changeRate -= 0.1 + rng() * 0.1
+      changeRate -= 0.08 + rng() * 0.07 // 최대 -15%
     }
 
     const newPrice = Math.max(0.01, currentPrice * (1 + changeRate))
@@ -266,7 +281,7 @@ export function simulateTurn(
           return sum + (curr - prev) / prev
         }, 0) / sectorStocks.length
 
-      const etfPrice = state.prices[stock.id] * (1 + avgChange * 0.8)
+      const etfPrice = state.prices[stock.id] * (1 + avgChange * 0.9)
       newPrices[stock.id] = Math.round(Math.max(0.01, etfPrice) * 100) / 100
 
       const historyIndex = newHistories.findIndex((h) => h.stockId === stock.id)

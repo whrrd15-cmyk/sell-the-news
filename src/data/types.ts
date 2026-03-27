@@ -135,6 +135,7 @@ export interface CursedEffect {
   upside: string
   downside: string
   description: string   // 다운사이드 설명 (한글)
+  drainAmount?: number  // drain_rp_per_turn 시 감소량 (기본 1)
 }
 
 export interface Item {
@@ -299,12 +300,12 @@ export interface RunConfig {
 }
 
 export const RUN_CONFIGS: RunConfig[] = [
-  { runNumber: 1, name: '수습 시장',   targetReturn: 0.05, volatilityMultiplier: 0.5, fakeNewsRatio: 0.05, maxTurns: 52 },
+  { runNumber: 1, name: '수습 시장',   targetReturn: 0.05, volatilityMultiplier: 0.5, fakeNewsRatio: 0.10, maxTurns: 52 },
   { runNumber: 2, name: '안정 시장',   targetReturn: 0.08, volatilityMultiplier: 0.7, fakeNewsRatio: 0.10, maxTurns: 52 },
   { runNumber: 3, name: '성장 시장',   targetReturn: 0.12, volatilityMultiplier: 0.9, fakeNewsRatio: 0.15, maxTurns: 52 },
   { runNumber: 4, name: '변동 시장',   targetReturn: 0.15, volatilityMultiplier: 1.2, fakeNewsRatio: 0.20, maxTurns: 52 },
   { runNumber: 5, name: '버블 시장',   targetReturn: 0.20, volatilityMultiplier: 1.5, fakeNewsRatio: 0.25, maxTurns: 52 },
-  { runNumber: 6, name: '위기 시장',   targetReturn: 0.12, volatilityMultiplier: 1.8, fakeNewsRatio: 0.30, maxTurns: 52 },
+  { runNumber: 6, name: '위기 시장',   targetReturn: 0.18, volatilityMultiplier: 1.8, fakeNewsRatio: 0.30, maxTurns: 52 },
   { runNumber: 7, name: '혼란 시장',   targetReturn: 0.25, volatilityMultiplier: 2.2, fakeNewsRatio: 0.35, maxTurns: 52 },
   { runNumber: 8, name: '카오스 시장', targetReturn: 0.30, volatilityMultiplier: 2.5, fakeNewsRatio: 0.40, maxTurns: 52 },
 ]

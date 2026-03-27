@@ -41,7 +41,7 @@ export function GameScreen() {
     breakingNews, breakingNewsDismissed,
     lastFeedback, resultCascadeData,
     isNewsDrawerOpen, toggleNewsDrawer,
-    currentWeeklyRule, equippedCursedItems,
+    currentWeeklyRule, equippedCursedItems, tradesThisTurn,
   } = useGameStore()
 
   // BGM
@@ -270,6 +270,8 @@ export function GameScreen() {
                     onBuy={handleBuy}
                     onSell={handleSell}
                     sellDisabled={isNoSelling}
+                    tradesRemaining={(unlockedSkills.includes('double_trade') ? 2 : 1) - tradesThisTurn}
+                    tradeLimit={unlockedSkills.includes('double_trade') ? 2 : 1}
                   />
                 </div>
 

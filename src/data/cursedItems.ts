@@ -49,7 +49,7 @@ export const CURSED_ITEMS: Item[] = [
   {
     id: 'cursed_golden_eye',
     name: '황금의 눈',
-    description: '모든 뉴스의 진위를 볼 수 있지만, 매 턴 RP가 1씩 감소합니다',
+    description: '모든 뉴스의 진위를 볼 수 있지만, 매 턴 RP가 3씩 감소합니다',
     rarity: 'rare',
     cost: 15,
     isConsumable: false,
@@ -58,22 +58,23 @@ export const CURSED_ITEMS: Item[] = [
     cursedEffect: {
       upside: 'reveal_all_news_truth',
       downside: 'drain_rp_per_turn',
-      description: '매 턴 RP -1',
+      drainAmount: 3,
+      description: '매 턴 RP -3',
     },
   },
   {
     id: 'cursed_leveraged_dice',
     name: '레버리지 주사위',
-    description: '모든 수익이 1.5배가 되지만, 손실도 1.5배가 됩니다',
+    description: '모든 수익이 1.8배가 되지만, 손실도 1.5배가 됩니다',
     rarity: 'rare',
     cost: 20,
     isConsumable: false,
     isCursed: true,
     effect: 'cursed_leverage',
     cursedEffect: {
-      upside: 'amplify_gains_1.5x',
+      upside: 'amplify_gains_1.8x',
       downside: 'amplify_losses_1.5x',
-      description: '손실도 1.5배',
+      description: '손실 1.5배',
     },
   },
   {
