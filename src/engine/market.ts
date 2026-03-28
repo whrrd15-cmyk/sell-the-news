@@ -25,6 +25,25 @@ function gaussianRandom(rng: () => number): number {
   return Math.sqrt(-2.0 * Math.log(u1 || 0.0001)) * Math.cos(2.0 * Math.PI * u2)
 }
 
+export interface PriceChangeBreakdown {
+  stockId: string
+  ticker: string
+  eventEffect: number      // 뉴스/이벤트 영향
+  herdEffect: number       // 군중 심리
+  momentum: number          // 모멘텀 (관성)
+  meanReversion: number     // 평균 회귀
+  noise: number             // 랜덤 노이즈
+  bubblePop: number         // 버블 붕괴
+  flashCrash: number        // 플래시 크래시
+  totalChange: number       // 최종 변동률
+}
+
+export interface EffectHistoryEntry {
+  turnApplied: number
+  headline: string
+  sectorImpacts: { sector: string; impact: number }[]
+}
+
 export interface MarketState {
   prices: Record<string, number>
   priceHistories: PriceHistory[]
@@ -36,6 +55,7 @@ export interface MarketState {
   herdSentiment: number                   // -1(패닉)~+1(광기), 군중 심리
   sectorBubble: Record<string, number>    // 0~1, 섹터별 버블 수준
   panicLevel: number                      // 0~1, 급락 시 패닉 정도
+  effectHistory: EffectHistoryEntry[]     // 이벤트 히스토리 (차트 마커용)
 }
 
 const SECTORS = ['tech', 'energy', 'finance', 'consumer', 'healthcare'] as const
@@ -68,6 +88,7 @@ export function createInitialMarketState(config: RunConfig): MarketState {
     herdSentiment: 0,
     sectorBubble,
     panicLevel: 0,
+    effectHistory: [],
   }
 }
 
@@ -147,17 +168,23 @@ function updatePanicLevel(
 
 // ─── 메인 시뮬레이션 ──────────────────────────────────────
 
+export interface SimulateTurnResult {
+  state: MarketState
+  breakdowns: PriceChangeBreakdown[]
+}
+
 export function simulateTurn(
   state: MarketState,
   config: RunConfig,
   turn: number,
   weeklyRule?: WeeklyRule | null,
-): MarketState {
+): SimulateTurnResult {
   const rng = seededRandom(turn * 7919 + config.runNumber * 31)
   const newPrices: Record<string, number> = { ...state.prices }
   const newHistories = [...state.priceHistories]
   const newMomentum = { ...state.sectorMomentum }
   const priceChanges: Record<string, number> = {}
+  const breakdowns: PriceChangeBreakdown[] = []
 
   // 1. 활성 이벤트 효과 → 섹터별 누적 영향
   const sectorBonus: Record<string, number> = {}
@@ -241,15 +268,34 @@ export function simulateTurn(
     if (weeklyDoubleRate) changeRate *= 2
 
     // 플래시 크래시 (해당 종목만, 최대 -10%)
-    if (flashCrashTargets.has(stock.id)) changeRate -= 0.1
+    let flashCrashVal = 0
+    if (flashCrashTargets.has(stock.id)) {
+      flashCrashVal = -0.1
+      changeRate -= 0.1
+    }
 
     // 버블 팝 체크
+    let bubblePopVal = 0
     const bubbleLevel = state.sectorBubble[stock.sector] || 0
     if (bubbleLevel > 0.8 && rng() < (bubbleLevel - 0.8) * 0.5) {
-      changeRate -= 0.08 + rng() * 0.07 // 최대 -15%
+      bubblePopVal = -(0.08 + rng() * 0.07)
+      changeRate += bubblePopVal // 최대 -15%
     }
 
     const newPrice = Math.max(0.01, currentPrice * (1 + changeRate))
+
+    breakdowns.push({
+      stockId: stock.id,
+      ticker: stock.ticker,
+      eventEffect,
+      herdEffect,
+      momentum,
+      meanReversion,
+      noise,
+      bubblePop: bubblePopVal,
+      flashCrash: flashCrashVal,
+      totalChange: changeRate,
+    })
     const roundedPrice = Math.round(newPrice * 100) / 100
     newPrices[stock.id] = roundedPrice
 
@@ -310,15 +356,19 @@ export function simulateTurn(
   const newPanicLevel = updatePanicLevel(state.panicLevel, priceChanges)
 
   return {
-    prices: newPrices,
-    priceHistories: newHistories,
-    activeEffects: newEffects,
-    marketTrend: clampedTrend,
-    sectorMomentum: newMomentum,
-    dangerLevel: state.dangerLevel,
-    herdSentiment: newHerdSentiment,
-    sectorBubble: newSectorBubble,
-    panicLevel: newPanicLevel,
+    state: {
+      prices: newPrices,
+      priceHistories: newHistories,
+      activeEffects: newEffects,
+      marketTrend: clampedTrend,
+      sectorMomentum: newMomentum,
+      dangerLevel: state.dangerLevel,
+      herdSentiment: newHerdSentiment,
+      sectorBubble: newSectorBubble,
+      panicLevel: newPanicLevel,
+      effectHistory: state.effectHistory,
+    },
+    breakdowns,
   }
 }
 
@@ -332,7 +382,8 @@ export function generatePreviousQuarter(
 ): MarketState {
   let state = initialState
   for (let t = -turns; t < 0; t++) {
-    state = simulateTurn(state, config, t + 1000)
+    const result = simulateTurn(state, config, t + 1000)
+    state = result.state
   }
   return state
 }
@@ -344,6 +395,8 @@ export function applyNewsEffect(
   state: MarketState,
   newsId: string,
   impacts: { sector: string; impact: number; duration: number }[],
+  turn?: number,
+  headline?: string,
 ): MarketState {
   const newEffect: ActiveEffect = {
     sectorImpacts: impacts.map((i) => ({
@@ -355,9 +408,19 @@ export function applyNewsEffect(
     sourceNewsId: newsId,
   }
 
+  const newHistory = headline && turn != null ? [
+    ...state.effectHistory,
+    {
+      turnApplied: turn,
+      headline,
+      sectorImpacts: impacts.map(i => ({ sector: i.sector, impact: i.impact })),
+    },
+  ] : state.effectHistory
+
   return {
     ...state,
     activeEffects: [...state.activeEffects, newEffect],
+    effectHistory: newHistory,
   }
 }
 

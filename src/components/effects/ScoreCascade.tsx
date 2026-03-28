@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { SFX } from '../../utils/sound'
+import { PriceBreakdownBar } from '../ui/PriceBreakdownBar'
+import type { PriceChangeBreakdown } from '../../engine/market'
 
 interface CascadeData {
   portfolioValueBefore: number
@@ -11,6 +13,7 @@ interface CascadeData {
   dividendEarned: number
   insuranceCompensation: number
   rpDoubled: boolean
+  breakdowns: PriceChangeBreakdown[]
 }
 
 interface NewsFeedback {
@@ -177,12 +180,13 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
         ))}
       </AnimatePresence>
 
-      {/* 종목 가격 변동 */}
+      {/* 종목 가격 변동 + 원인 분해 */}
       <AnimatePresence>
         {phaseGte('stocks') && phase !== 'news' &&
           data.stockChanges.slice(0, stockIdx).map((sc, i) => {
             const pct = sc.prevPrice > 0 ? ((sc.newPrice - sc.prevPrice) / sc.prevPrice * 100) : 0
             const up = pct >= 0
+            const bd = data.breakdowns.find(b => b.stockId === sc.stockId)
             return (
               <motion.div
                 key={sc.stockId + i}
@@ -190,11 +194,14 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 className="score-cascade-stock"
               >
-                <span className="score-cascade-ticker">{sc.ticker}</span>
-                <span className="score-cascade-price">${sc.newPrice.toFixed(0)}</span>
-                <span className={`score-cascade-pct ${up ? 'score-cascade-pct--up' : 'score-cascade-pct--down'}`}>
-                  {up ? '+' : ''}{pct.toFixed(1)}%
-                </span>
+                <div className="flex items-center gap-2 px-2">
+                  <span className="score-cascade-ticker">{sc.ticker}</span>
+                  <span className="score-cascade-price">${sc.newPrice.toFixed(0)}</span>
+                  <span className={`score-cascade-pct ${up ? 'score-cascade-pct--up' : 'score-cascade-pct--down'}`}>
+                    {up ? '+' : ''}{pct.toFixed(1)}%
+                  </span>
+                </div>
+                {bd && <PriceBreakdownBar breakdown={bd} />}
               </motion.div>
             )
           })

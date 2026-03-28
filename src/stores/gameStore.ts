@@ -15,7 +15,7 @@ import type {
   Item,
 } from '../data/types'
 import { RUN_CONFIGS } from '../data/types'
-import { createInitialMarketState, generatePreviousQuarter, simulateTurn, applyNewsEffect, calculateDangerLevel, type MarketState } from '../engine/market'
+import { createInitialMarketState, generatePreviousQuarter, simulateTurn, applyNewsEffect, calculateDangerLevel, type MarketState, type PriceChangeBreakdown } from '../engine/market'
 import { createInitialPortfolio, buyStock, sellStock, awardReputation } from '../engine/portfolio'
 import { generateTurnNews } from '../engine/news'
 import { rollSpecialEvent, QUIZ_EVENTS } from '../data/specialEvents'
@@ -95,6 +95,7 @@ interface GameState {
     dividendEarned: number
     insuranceCompensation: number
     rpDoubled: boolean
+    breakdowns: PriceChangeBreakdown[]
   } | null
 
   // 메타 진행
@@ -349,9 +350,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     let updatedMarket = { ...market }
     const feedback: { newsId: string; note: string; wasFake: boolean }[] = []
 
+    const { turn: currentTurn } = get()
     for (const news of currentNews) {
       const impacts = news.isReal ? news.actualImpact : news.actualImpact
-      updatedMarket = applyNewsEffect(updatedMarket, news.id, impacts)
+      updatedMarket = applyNewsEffect(updatedMarket, news.id, impacts, currentTurn, news.headline)
 
       feedback.push({
         newsId: news.id,
@@ -383,7 +385,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     updatedMarket = { ...updatedMarket, dangerLevel: adjustedDanger }
 
-    const newMarket = simulateTurn(updatedMarket, runConfig, turn, currentWeeklyRule)
+    const simResult = simulateTurn(updatedMarket, runConfig, turn, currentWeeklyRule)
+    const newMarket = simResult.state
 
     // 캐스케이드: 종목별 가격 변화
     const stockChanges = portfolio.positions
@@ -511,6 +514,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         dividendEarned: Math.floor(dividendEarned),
         insuranceCompensation: Math.floor(insuranceCompensation),
         rpDoubled,
+        breakdowns: simResult.breakdowns,
       },
       stats: { ...stats },
     })

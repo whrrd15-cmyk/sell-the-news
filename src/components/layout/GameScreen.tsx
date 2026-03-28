@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useGameStore } from '../../stores/gameStore'
 import { STOCKS } from '../../data/stocks'
 import { getPortfolioValue, getTotalReturn } from '../../engine/portfolio'
-import CandlestickChart from '../charts/CandlestickChart'
+import CandlestickChart, { type ChartMarker } from '../charts/CandlestickChart'
 import { BalPanel } from '../ui/BalPanel'
 import { TradePanel } from '../trade/TradePanel'
 import { StockListPanel } from '../stocks/StockListPanel'
@@ -25,6 +25,9 @@ import { NewsReferenceDrawer } from '../ui/NewsReferenceDrawer'
 import { ScoreCascade } from '../effects/ScoreCascade'
 import { SpotlightTutorial } from '../tutorial/SpotlightTutorial'
 import { SECTOR_COLORS } from '../../data/constants'
+import { MarketMoodIndicator } from '../ui/MarketMoodIndicator'
+import { ActiveEffectsChip } from '../ui/ActiveEffectsChip'
+import { SectorHealthStrip } from '../ui/SectorHealthStrip'
 import { SFX, bgm } from '../../utils/sound'
 
 const INITIAL_CASH = 10000
@@ -65,6 +68,33 @@ export function GameScreen() {
     const prev = hist.prices[hist.prices.length - 2]
     return prev > 0 ? (currentPrice - prev) / prev : 0
   }, [selectedStockId, market.priceHistories, currentPrice])
+
+  // 차트 이벤트 마커 (effectHistory → 선택 종목 섹터 관련만 필터)
+  const chartMarkers: ChartMarker[] = useMemo(() => {
+    if (!selectedStock || !market.effectHistory) return []
+    const sector = selectedStock.sector
+    // priceHistories의 시작점 기준으로 turnIndex 매핑
+    const histLen = selectedHistory.length
+    if (histLen < 2) return []
+    // effectHistory의 turnApplied는 절대 턴 번호
+    // priceHistory는 generatePreviousQuarter부터 시작하므로 첫 가격의 턴은 대략 turn - histLen + 1
+    const startTurn = turn - histLen + 1
+    return market.effectHistory
+      .filter(e => e.sectorImpacts.some(si => si.sector === sector))
+      .map(e => {
+        const impact = e.sectorImpacts.find(si => si.sector === sector)
+        const idx = e.turnApplied - startTurn
+        if (idx < 0 || idx >= histLen - 1) return null
+        const isPositive = (impact?.impact ?? 0) >= 0
+        return {
+          turnIndex: idx,
+          label: e.headline.length > 8 ? e.headline.slice(0, 8) + '…' : e.headline,
+          color: isPositive ? '#5ec269' : '#e8534a',
+          position: (isPositive ? 'belowBar' : 'aboveBar') as const,
+        }
+      })
+      .filter((m): m is ChartMarker => m !== null)
+  }, [selectedStock, market.effectHistory, selectedHistory.length, turn])
 
   // Auto-select first stock
   const hasAutoSelected = useRef(false)
@@ -141,6 +171,7 @@ export function GameScreen() {
             volatility={selectedStock?.volatility ?? 0.3}
             width={chartSize.w}
             height={chartSize.h}
+            markers={chartMarkers}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-bal-text-dim text-sm">
@@ -202,10 +233,16 @@ export function GameScreen() {
         {/* ═══ 속보 배너 ═══ */}
         <BreakingNewsBanner />
 
-        {/* ═══ 주간 규칙 배너 + 위험 게이지 + 저주 아이템 ═══ */}
+        {/* ═══ 주간 규칙 배너 + 위험 게이지 + 심리 + 활성효과 + 저주 아이템 ═══ */}
         <div className="flex items-center gap-2 px-2 flex-shrink-0">
           <WeeklyRuleBanner rule={currentWeeklyRule} />
           <DangerGauge level={market.dangerLevel} />
+          <MarketMoodIndicator
+            herdSentiment={market.herdSentiment}
+            panicLevel={market.panicLevel}
+            maxBubble={Math.max(...Object.values(market.sectorBubble), 0)}
+          />
+          <ActiveEffectsChip effects={market.activeEffects} />
           {equippedCursedItems.length > 0 && (
             <div className="flex items-center gap-1 ml-auto">
               {equippedCursedItems.map((item, i) => (
@@ -277,6 +314,12 @@ export function GameScreen() {
 
                 {/* 종목 리스트 (사이드바 전체) */}
                 <div className="flex flex-col gap-[6px] min-h-0 overflow-hidden" style={{ gridArea: 'sidebar' }} data-tutorial="stock-sidebar">
+                  {/* 섹터 건강 스트립 */}
+                  <SectorHealthStrip
+                    sectorMomentum={market.sectorMomentum}
+                    sectorBubble={market.sectorBubble}
+                    activeEffects={market.activeEffects}
+                  />
                   <BalPanel label="종목" className="flex flex-col min-h-0 overflow-hidden flex-1">
                     <StockListPanel
                       stocks={STOCKS}

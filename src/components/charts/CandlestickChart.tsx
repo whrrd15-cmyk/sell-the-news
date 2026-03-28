@@ -1,22 +1,32 @@
 import { useRef, useEffect, useMemo } from 'react'
 import {
   createChart,
+  createSeriesMarkers,
   ColorType,
   CandlestickSeries,
   HistogramSeries,
   CrosshairMode,
   type IChartApi,
   type ISeriesApi,
+  type ISeriesMarkersPluginApi,
   type CandlestickData,
   type HistogramData,
   type Time,
 } from 'lightweight-charts'
+
+export interface ChartMarker {
+  turnIndex: number
+  label: string
+  color: string
+  position: 'aboveBar' | 'belowBar'
+}
 
 interface CandlestickChartProps {
   prices: number[]
   volatility?: number
   width?: number
   height?: number
+  markers?: ChartMarker[]
 }
 
 interface CandleData {
@@ -60,11 +70,13 @@ const BALATRO = {
 const BASE_TIME = 1704067200 // 2024-01-01
 const DAY_SECONDS = 86400 * 7 // 1턴 = 1주
 
-export default function CandlestickChart({ prices, volatility = 0.3, width = 600, height = 300 }: CandlestickChartProps) {
+export default function CandlestickChart({ prices, volatility = 0.3, width = 600, height = 300, markers = [] }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
+  const priceLineRef = useRef<ReturnType<ISeriesApi<'Candlestick'>['createPriceLine']> | null>(null)
+  const markersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
 
   const candles = useMemo(() => synthesizeCandles(prices, volatility), [prices, volatility])
 
@@ -144,6 +156,9 @@ export default function CandlestickChart({ prices, volatility = 0.3, width = 600
     volumeSeriesRef.current = volumeSeries
 
     return () => {
+      if (markersPluginRef.current) markersPluginRef.current.detach()
+      markersPluginRef.current = null
+      priceLineRef.current = null
       chart.remove()
       chartRef.current = null
       candleSeriesRef.current = null
@@ -179,14 +194,37 @@ export default function CandlestickChart({ prices, volatility = 0.3, width = 600
     candleSeriesRef.current.setData(candleData)
     volumeSeriesRef.current.setData(volumeData)
 
-    // 마지막 가격 라인
+    // 이벤트 마커 (lightweight-charts v5: createSeriesMarkers API)
+    if (markersPluginRef.current) {
+      markersPluginRef.current.detach()
+      markersPluginRef.current = null
+    }
+    if (markers.length > 0 && candleSeriesRef.current) {
+      const seriesMarkers = markers
+        .filter(m => m.turnIndex >= 0 && m.turnIndex < candles.length)
+        .sort((a, b) => a.turnIndex - b.turnIndex)
+        .map(m => ({
+          time: (BASE_TIME + m.turnIndex * DAY_SECONDS) as Time,
+          position: m.position,
+          color: m.color,
+          shape: (m.position === 'aboveBar' ? 'arrowDown' : 'arrowUp') as 'arrowDown' | 'arrowUp',
+          text: m.label,
+        }))
+      markersPluginRef.current = createSeriesMarkers(candleSeriesRef.current, seriesMarkers)
+    }
+
+    // 마지막 가격 라인 (이전 라인 제거 후 재생성)
     if (candles.length > 0) {
+      if (priceLineRef.current) {
+        try { candleSeriesRef.current.removePriceLine(priceLineRef.current) } catch { /* noop */ }
+        priceLineRef.current = null
+      }
       const last = candles[candles.length - 1]
       const color = last.close >= last.open ? BALATRO.green : BALATRO.red
       candleSeriesRef.current.applyOptions({
         lastValueVisible: true,
       })
-      candleSeriesRef.current.createPriceLine({
+      priceLineRef.current = candleSeriesRef.current.createPriceLine({
         price: last.close,
         color,
         lineWidth: 1,
@@ -197,7 +235,7 @@ export default function CandlestickChart({ prices, volatility = 0.3, width = 600
     }
 
     chartRef.current?.timeScale().fitContent()
-  }, [candles])
+  }, [candles, markers])
 
   if (candles.length === 0) {
     return (
