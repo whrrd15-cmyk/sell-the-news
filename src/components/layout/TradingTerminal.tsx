@@ -11,8 +11,10 @@ import type { ShortPosition, LeveragedPosition, LimitOrder } from '../../data/ty
 import { openShort, coverShort, buyWithLeverage, closeLeveragedPosition, checkOrderFill } from '../../engine/portfolio'
 import { StockCardStrip } from '../stocks/StockCardStrip'
 import { PortfolioOverview } from '../ui/PortfolioOverview'
-import { MarketPulseBar } from '../ui/MarketPulseBar'
 import { MarketConditionModal } from '../ui/MarketConditionModal'
+import { SidebarNav, type PageId } from './SidebarNav'
+import { NewsPage } from '../pages/NewsPage'
+import { AnalysisPage } from '../pages/AnalysisPage'
 import { BalatroBackground } from '../effects/BalatroBackground'
 import type { BackgroundMood } from '../effects/BalatroBackground'
 import { BalChip } from '../ui/BalChip'
@@ -177,6 +179,7 @@ export function TradingTerminal() {
 
   // ═══ 모달 ═══
   const [showMarketModal, setShowMarketModal] = useState(false)
+  const [activePage, setActivePage] = useState<PageId>('trading')
 
   // ═══ 공매도/레버리지/주문 상태 ═══
   const [shortPositions, setShortPositions] = useState<ShortPosition[]>([])
@@ -255,185 +258,160 @@ export function TradingTerminal() {
 
   if (!market) return null
 
+  const allNews = dripNews.length > 0 ? dripNews : currentNews
+
   return (
     <div className="h-screen w-screen overflow-hidden font-pixel text-white relative">
       <BalatroBackground mood={bgMood} />
 
-      <div className="relative z-10 trading-terminal">
-        {/* ═══ HUD 바 ═══ */}
-        <div className="trading-hud" style={{ gridArea: 'hud' }}>
-          <div className="trading-hud-left">
-            <BalChip color="gold" label="현금">${Math.floor(portfolio.cash).toLocaleString()}</BalChip>
-            <BalChip color={isPositive ? 'green' : 'red'} label="수익률">
-              {isPositive ? '+' : ''}{(totalReturn * 100).toFixed(1)}%
-            </BalChip>
-            <BalChip color="purple" label="RP">{portfolio.reputationPoints}</BalChip>
-          </div>
+      <div className="relative z-10 flex h-full">
+        {/* ═══ 사이드바 네비게이션 ═══ */}
+        <SidebarNav
+          activePage={activePage}
+          onNavigate={setActivePage}
+          unreadNewsCount={newsUnreadCount}
+        />
 
-          <div className="trading-hud-center">
-            {/* 시간 표시 */}
-            <div className="trading-time-display">
-              <span className="trading-time-week">{runConfig?.name ?? '분기'}</span>
-              <span className="trading-time-clock">{formatGameTime(gameTime)}</span>
-              <span className={`trading-time-session ${session.isOpen ? 'trading-time-session--open' : ''}`}>
-                {session.isOpen ? '장중' : session.preMarket ? '장전' : '장후'}
-              </span>
+        {/* ═══ 메인 콘텐츠 ═══ */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* ═══ HUD 바 (모든 페이지 공통) ═══ */}
+          <div className="trading-hud">
+            <div className="trading-hud-left">
+              <BalChip color="gold" label="현금">${Math.floor(portfolio.cash).toLocaleString()}</BalChip>
+              <BalChip color={isPositive ? 'green' : 'red'} label="수익률">
+                {isPositive ? '+' : ''}{(totalReturn * 100).toFixed(1)}%
+              </BalChip>
+              <BalChip color="purple" label="RP">{portfolio.reputationPoints}</BalChip>
             </div>
-            {/* 속도 조절 */}
-            <div className="trading-speed-controls">
-              {(['paused', '1x', '2x', '4x'] as const).map(s => (
-                <button
-                  key={s}
-                  className={`trading-speed-btn ${speed === s ? 'trading-speed-btn--active' : ''}`}
-                  onClick={() => setSpeed(s)}
-                >
-                  {s === 'paused' ? '⏸' : s}
-                </button>
-              ))}
+
+            <div className="trading-hud-center">
+              <div className="trading-time-display">
+                <span className="trading-time-week">{runConfig?.name ?? '분기'}</span>
+                <span className="trading-time-clock">{formatGameTime(gameTime)}</span>
+                <span className={`trading-time-session ${session.isOpen ? 'trading-time-session--open' : ''}`}>
+                  {session.isOpen ? '장중' : session.preMarket ? '장전' : '장후'}
+                </span>
+              </div>
+              <div className="trading-speed-controls">
+                {(['paused', '1x', '2x', '4x'] as const).map(s => (
+                  <button key={s}
+                    className={`trading-speed-btn ${speed === s ? 'trading-speed-btn--active' : ''}`}
+                    onClick={() => setSpeed(s)}
+                  >{s === 'paused' ? '⏸' : s}</button>
+                ))}
+              </div>
+              <div className="trading-quarter-bar">
+                <div className="trading-quarter-fill" style={{ width: `${quarterProgress * 100}%` }} />
+              </div>
             </div>
-            {/* 분기 진행 바 */}
-            <div className="trading-quarter-bar">
-              <div
-                className="trading-quarter-fill"
-                style={{ width: `${quarterProgress * 100}%` }}
+
+            <div className="trading-hud-right">
+              <InventoryDropdown
+                inventory={inventory}
+                onUseItem={(id) => { SFX.click(); useItem(id) }}
+                phase="investment"
               />
+              <button
+                className={`p-1.5 rounded-lg transition-all ${visitedShopThisTurn ? 'text-bal-text-dim/50 cursor-not-allowed' : 'text-bal-purple hover:bg-white/5 cursor-pointer'}`}
+                style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+                onClick={() => { if (!visitedShopThisTurn) { SFX.click(); openShop() } }}
+              >
+                <ShopIcon size={14} />
+              </button>
             </div>
           </div>
 
-          <div className="trading-hud-right">
-            <MarketPulseBar
-              marketConditions={marketConditions}
-              herdSentiment={market.herdSentiment}
-              panicLevel={market.panicLevel}
-              maxBubble={Math.max(...Object.values(market.sectorBubble), 0)}
-              dangerLevel={market.dangerLevel}
-              activeEffects={market.activeEffects}
-              onOpenConditionModal={() => setShowMarketModal(true)}
-            />
-            <InventoryDropdown
-              inventory={inventory}
-              onUseItem={(id) => { SFX.click(); useItem(id) }}
-              phase="investment"
-            />
-            <button
-              className={`p-1.5 rounded-lg transition-all ${
-                visitedShopThisTurn
-                  ? 'text-bal-text-dim/50 cursor-not-allowed'
-                  : 'text-bal-purple hover:bg-white/5 cursor-pointer'
-              }`}
-              style={{ border: '1px solid rgba(255,255,255,0.1)' }}
-              onClick={() => { if (!visitedShopThisTurn) { SFX.click(); openShop() } }}
-            >
-              <ShopIcon size={14} />
-            </button>
-          </div>
-        </div>
-
-        {/* ═══ 뉴스 피드 (왼쪽) ═══ */}
-        <div className="trading-news" style={{ gridArea: 'news' }}>
-          <BalPanel label={`뉴스 피드${newsUnreadCount > 0 ? ` (${newsUnreadCount})` : ''}`} className="flex flex-col h-full overflow-hidden">
-            <NewsFeedPanel
-              news={dripNews.length > 0 ? dripNews : currentNews}
-              freshness={newsFreshness}
-              unreadCount={newsUnreadCount}
-              onMarkRead={newsMarkRead}
-              unlockedSkills={unlockedSkills}
-            />
-          </BalPanel>
-        </div>
-
-        {/* ═══ 차트 (중앙 상단) ═══ */}
-        <div className="trading-chart" style={{ gridArea: 'chart' }}>
-          <BalPanel
-            label={selectedStock
-              ? `${selectedStock.name} (${selectedStock.ticker})  $${currentPrice.toFixed(0)}  ${priceChange >= 0 ? '▲' : '▼'}${(priceChange * 100).toFixed(1)}%`
-              : '차트'
-            }
-            accentColor={selectedStock ? SECTOR_COLORS[selectedStock.sector] : undefined}
-            className="flex flex-col h-full"
-          >
-            <div ref={chartContainerRef} className="flex-1 min-h-0">
-              {selectedHistory.length > 1 ? (
-                <CandlestickChart
-                  prices={selectedHistory}
-                  volatility={selectedStock?.volatility ?? 0.3}
-                  width={chartSize.w}
-                  height={chartSize.h}
-                  markers={[]}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-bal-text-dim text-sm">
-                  종목을 선택하면 차트가 표시됩니다
+          {/* ═══ 페이지 콘텐츠 ═══ */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {activePage === 'trading' && (
+              /* ════ 매매 페이지: 원시 정보만 ════ */
+              <div className="trading-terminal">
+                <div className="trading-news" style={{ gridArea: 'news' }}>
+                  <BalPanel label={`속보${newsUnreadCount > 0 ? ` (${newsUnreadCount})` : ''}`} className="flex flex-col h-full overflow-hidden">
+                    <NewsFeedPanel
+                      news={allNews}
+                      freshness={newsFreshness}
+                      unreadCount={newsUnreadCount}
+                      onMarkRead={newsMarkRead}
+                      unlockedSkills={unlockedSkills}
+                      showImpactTags={false}
+                    />
+                  </BalPanel>
                 </div>
-              )}
-            </div>
-          </BalPanel>
-        </div>
 
-        {/* ═══ 매매 패널 (오른쪽) ═══ */}
-        <div className="trading-trade" style={{ gridArea: 'trading' }}>
-          <BalPanel label="매매" className="flex flex-col h-full overflow-hidden">
-            <TradingPanel
-              stock={selectedStock}
-              currentPrice={currentPrice}
-              priceChange={priceChange}
-              portfolio={portfolio}
-              position={selectedPosition}
-              onBuy={handleBuy}
-              onSell={handleSell}
-              shortPositions={shortPositions}
-              onOpenShort={handleOpenShort}
-              onCoverShort={handleCoverShort}
-              leveragedPositions={leveragedPositions}
-              onBuyLeverage={handleBuyLeverage}
-              onCloseLeverage={handleCloseLeverage}
-              maxLeverage={maxLeverage}
-              activeOrders={activeOrders}
-              onCreateOrder={handleCreateOrder}
-              onCancelOrder={handleCancelOrder}
-              unlockedSkills={unlockedSkills}
-              stockCondition={selectedStockCondition}
-              autoTradeRules={autoTradeRules}
-              onAddAutoTradeRule={addAutoTradeRule}
-              onRemoveAutoTradeRule={removeAutoTradeRule}
-            />
-          </BalPanel>
-        </div>
+                <div className="trading-chart" style={{ gridArea: 'chart' }}>
+                  <BalPanel
+                    label={selectedStock
+                      ? `${selectedStock.name} (${selectedStock.ticker})  $${currentPrice.toFixed(0)}  ${priceChange >= 0 ? '▲' : '▼'}${(priceChange * 100).toFixed(1)}%`
+                      : '차트'}
+                    accentColor={selectedStock ? SECTOR_COLORS[selectedStock.sector] : undefined}
+                    className="flex flex-col h-full"
+                  >
+                    <div ref={chartContainerRef} className="flex-1 min-h-0">
+                      {selectedHistory.length > 1 ? (
+                        <CandlestickChart prices={selectedHistory} volatility={selectedStock?.volatility ?? 0.3} width={chartSize.w} height={chartSize.h} markers={[]} />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-bal-text-dim text-sm">
+                          종목을 선택하면 차트가 표시됩니다
+                        </div>
+                      )}
+                    </div>
+                  </BalPanel>
+                </div>
 
-        {/* ═══ 하단: 여론 + 종목 카드 ═══ */}
-        <div className="trading-bottom" style={{ gridArea: 'bottom' }}>
-          <div className="trading-bottom-inner">
-            {/* 섹터 임팩트 */}
-            <SectorImpactSummary news={dripNews.length > 0 ? dripNews : currentNews} />
-            {/* 종목 카드 스트립 */}
-            <StockCardStrip
-              stocks={STOCKS}
-              prices={market.prices}
-              priceHistories={market.priceHistories}
-              positions={portfolio.positions}
-              selectedStockId={selectedStockId}
-              onSelectStock={handleSelectStock}
-            />
-            {/* 포트폴리오 개요 */}
-            <PortfolioOverview portfolio={portfolio} prices={market.prices} />
+                <div className="trading-trade" style={{ gridArea: 'trading' }}>
+                  <BalPanel label="매매" className="flex flex-col h-full overflow-hidden">
+                    <TradingPanel
+                      stock={selectedStock} currentPrice={currentPrice} priceChange={priceChange}
+                      portfolio={portfolio} position={selectedPosition}
+                      onBuy={handleBuy} onSell={handleSell}
+                      shortPositions={shortPositions} onOpenShort={handleOpenShort} onCoverShort={handleCoverShort}
+                      leveragedPositions={leveragedPositions} onBuyLeverage={handleBuyLeverage} onCloseLeverage={handleCloseLeverage}
+                      maxLeverage={maxLeverage}
+                      activeOrders={activeOrders} onCreateOrder={handleCreateOrder} onCancelOrder={handleCancelOrder}
+                      unlockedSkills={unlockedSkills} stockCondition={selectedStockCondition}
+                      autoTradeRules={autoTradeRules} onAddAutoTradeRule={addAutoTradeRule} onRemoveAutoTradeRule={removeAutoTradeRule}
+                    />
+                  </BalPanel>
+                </div>
+
+                <div className="trading-bottom" style={{ gridArea: 'bottom' }}>
+                  <div className="trading-bottom-inner">
+                    <StockCardStrip stocks={STOCKS} prices={market.prices} priceHistories={market.priceHistories}
+                      positions={portfolio.positions} selectedStockId={selectedStockId} onSelectStock={handleSelectStock} />
+                    <PortfolioOverview portfolio={portfolio} prices={market.prices} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activePage === 'news' && (
+              /* ════ 뉴스 페이지: 상세 읽기 + 인과관계 ════ */
+              <NewsPage news={allNews} freshness={newsFreshness} unlockedSkills={unlockedSkills} />
+            )}
+
+            {activePage === 'analysis' && (
+              /* ════ 분석 페이지: 가공된 지표 ════ */
+              <AnalysisPage
+                marketConditions={marketConditions}
+                herdSentiment={market.herdSentiment}
+                panicLevel={market.panicLevel}
+                maxBubble={Math.max(...Object.values(market.sectorBubble), 0)}
+                dangerLevel={market.dangerLevel}
+                activeEffects={market.activeEffects}
+                sectorMomentum={market.sectorMomentum}
+                sectorBubble={market.sectorBubble}
+                news={allNews}
+              />
+            )}
           </div>
         </div>
 
-        {/* ═══ 속보 배너 ═══ */}
+        {/* ═══ 전역 오버레이 ═══ */}
         <BreakingNewsBanner />
-
-        {/* ═══ 특수 이벤트 ═══ */}
         {currentSpecialEvent && <SpecialEventOverlay />}
+        {showMarketModal && <MarketConditionModal conditions={marketConditions} onClose={() => setShowMarketModal(false)} />}
 
-        {/* ═══ 시장 상황 모달 ═══ */}
-        {showMarketModal && (
-          <MarketConditionModal
-            conditions={marketConditions}
-            onClose={() => setShowMarketModal(false)}
-          />
-        )}
-
-        {/* ═══ 분기 종료 오버레이 ═══ */}
         {isQuarterEnded && (
           <div className="trading-quarter-end-overlay">
             <div className="trading-quarter-end-card">
@@ -445,21 +423,13 @@ export function TradingTerminal() {
                 </span></div>
                 <div className="mt-2 text-bal-text-dim text-xs">
                   목표: {((runConfig?.targetReturn ?? 0.05) * 100).toFixed(0)}%
-                  {totalReturn >= (runConfig?.targetReturn ?? 0.05)
-                    ? ' ✅ 달성!'
-                    : ' ❌ 미달성'
-                  }
+                  {totalReturn >= (runConfig?.targetReturn ?? 0.05) ? ' ✅ 달성!' : ' ❌ 미달성'}
                 </div>
               </div>
               <div className="text-[10px] text-bal-text-dim mb-4 italic">
                 "시장은 당신이 배운 것을 시험합니다. 다음 분기에서 더 나은 판단을 하세요."
               </div>
-              <button
-                className="bal-btn bal-btn-gold w-full"
-                onClick={() => {
-                  useGameStore.getState().setScreen('result')
-                }}
-              >
+              <button className="bal-btn bal-btn-gold w-full" onClick={() => useGameStore.getState().setScreen('result')}>
                 결과 확인
               </button>
             </div>

@@ -18,9 +18,11 @@ interface NewsFeedPanelProps {
   unreadCount: number
   onMarkRead: (id: string) => void
   unlockedSkills: string[]
+  /** false = 헤드라인만 (매매 페이지), true = 임팩트 태그 포함 */
+  showImpactTags?: boolean
 }
 
-export function NewsFeedPanel({ news, freshness, unreadCount, onMarkRead, unlockedSkills }: NewsFeedPanelProps) {
+export function NewsFeedPanel({ news, freshness, unreadCount, onMarkRead, unlockedSkills, showImpactTags = true }: NewsFeedPanelProps) {
   if (news.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-bal-text-dim text-xs p-4">
@@ -58,6 +60,7 @@ export function NewsFeedPanel({ news, freshness, unreadCount, onMarkRead, unlock
                 freshness={freshness[card.id] ?? 0}
                 onClick={() => onMarkRead(card.id)}
                 unlockedSkills={unlockedSkills}
+                showImpactTags={showImpactTags}
               />
             </motion.div>
           ))}
@@ -74,9 +77,10 @@ interface NewsFeedItemProps {
   freshness: number
   onClick: () => void
   unlockedSkills: string[]
+  showImpactTags?: boolean
 }
 
-function NewsFeedItem({ card, freshness, onClick, unlockedSkills }: NewsFeedItemProps) {
+function NewsFeedItem({ card, freshness, onClick, unlockedSkills, showImpactTags = true }: NewsFeedItemProps) {
   const isFresh = freshness > 0.7
   const isStale = freshness < 0.3
   const opacity = Math.max(0.4, 0.4 + freshness * 0.6)
@@ -100,8 +104,8 @@ function NewsFeedItem({ card, freshness, onClick, unlockedSkills }: NewsFeedItem
       {/* 헤드라인 */}
       <div className="news-feed-headline">{card.headline}</div>
 
-      {/* 섹터 임팩트 태그 */}
-      {card.perceivedImpact.length > 0 && (
+      {/* 섹터 임팩트 태그 (showImpactTags=false일 때 숨김) */}
+      {showImpactTags && card.perceivedImpact.length > 0 && (
         <div className="flex gap-1 mt-1 flex-wrap">
           {card.perceivedImpact.map((si, i) => {
             const sectorKey = si.sector as Sector
