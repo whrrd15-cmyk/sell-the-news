@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { generateSocialPosts, type SocialPost } from '../../engine/social'
 import { generateIndicators, type EconomicIndicator } from '../../engine/indicators'
-import { AvatarIcon, HeartIcon, CommentIcon, ShareIcon, ChatBubbleIcon, ChartBarIcon, BoltIcon, PinIcon, LightbulbIcon } from '../icons/SocialIcons'
+import { AvatarIcon, HeartIcon, CommentIcon, ShareIcon, ChatBubbleIcon, ChartBarIcon, LightbulbIcon } from '../icons/SocialIcons'
 
 /**
  * 사회정보 페이지 — SNS 여론 + 경제 지표
@@ -56,7 +56,7 @@ export function SocialPage({ herdSentiment, panicLevel, tickCount, runNumber, we
         {activeTab === 'feed' ? (
           <SocialFeedFlat posts={posts} />
         ) : (
-          <IndicatorsV2 indicators={indicators} />
+          <IndicatorsTable indicators={indicators} />
         )}
       </div>
 
@@ -119,50 +119,44 @@ function fmtCount(n: number): string {
   return n.toString()
 }
 
-// ═══ 경제 지표 v2 (카드형) ═══
+// ═══ 경제 지표 (테이블형) ═══
 
-function IndicatorsV2({ indicators }: { indicators: EconomicIndicator[] }) {
+function IndicatorsTable({ indicators }: { indicators: EconomicIndicator[] }) {
   return (
-    <div className="indicators-v2">
-      <div className="indicators-v2-grid">
-        {indicators.map(ind => {
-          const diff = ind.current - ind.previous
-          const isNegativeMetric = ['unemployment', 'cpi'].includes(ind.id)
-          const isGood = diff === 0 ? null
-            : (diff > 0 && !isNegativeMetric) || (diff < 0 && isNegativeMetric)
-          const color = isGood === null ? '#8888aa' : isGood ? '#5ec269' : '#e8534a'
-          const absDiff = Math.abs(diff)
-          const isSignificant = absDiff > 0.5
+    <div className="indicators-view">
+      <table className="indicators-table">
+        <thead>
+          <tr>
+            <th>지표</th>
+            <th>현재</th>
+            <th>전분기</th>
+            <th>변화</th>
+          </tr>
+        </thead>
+        <tbody>
+          {indicators.map(ind => {
+            const diff = ind.current - ind.previous
+            const isPositive = diff > 0
+            const isNegativeMetric = ['unemployment', 'cpi'].includes(ind.id)
+            const color = diff === 0 ? '#8888aa'
+              : (isPositive && !isNegativeMetric) || (!isPositive && isNegativeMetric)
+                ? '#5ec269' : '#e8534a'
 
-          return (
-            <div key={ind.id} className={`indicator-card ${isSignificant ? 'indicator-card--significant' : ''}`}
-              style={{ borderColor: isSignificant ? `${color}40` : 'rgba(255,255,255,0.06)' }}>
-              <div className="indicator-card-name">{ind.name}</div>
-              <div className="indicator-card-value">
-                <span className="indicator-card-current">{ind.current}{ind.unit}</span>
-                <span className="indicator-card-arrow" style={{ color }}>
-                  {diff > 0 ? '▲' : diff < 0 ? '▼' : '─'}
-                </span>
-              </div>
-              <div className="indicator-card-compare">
-                <span className="indicator-card-prev">전분기 {ind.previous}{ind.unit}</span>
-                <span className="indicator-card-diff" style={{ color }}>
-                  {diff > 0 ? '+' : ''}{diff.toFixed(1)}{ind.unit}
-                </span>
-              </div>
-              {isSignificant && (
-                <div className="indicator-card-alert" style={{ color, display: 'flex', alignItems: 'center', gap: 3 }}>
-                  {absDiff > 1
-                    ? <><BoltIcon size={9} color={color} /> <span>큰 변동</span></>
-                    : <><PinIcon size={9} color={color} /> <span>주목</span></>
-                  }
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-      <div className="indicators-v2-note" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            return (
+              <tr key={ind.id}>
+                <td className="indicators-name">{ind.name}</td>
+                <td className="indicators-value">{ind.current}{ind.unit}</td>
+                <td className="indicators-prev">{ind.previous}{ind.unit}</td>
+                <td style={{ color }} className="indicators-diff">
+                  {isPositive ? '▲' : diff < 0 ? '▼' : '─'}
+                  {Math.abs(diff).toFixed(1)}{ind.unit}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <div className="indicators-note" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
         <ChartBarIcon size={10} color="#8888aa" />
         <span>이 수치들이 의미하는 것은? 스스로 판단하세요.</span>
       </div>
