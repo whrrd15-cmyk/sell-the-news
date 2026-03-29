@@ -453,3 +453,153 @@ export function getPriceChange(history: PriceHistory): number {
   const curr = history.prices[history.prices.length - 1]
   return (curr - prev) / prev
 }
+
+// ═══════════════════════════════════════════
+// 실시간 틱 기반 시장 시뮬레이션
+// ═══════════════════════════════════════════
+
+/**
+ * 실시간 가격 틱
+ * simulateTurn()이 1턴(=1주) 전체 변동을 한 번에 계산하는 반면,
+ * tickMarket()은 ~3초마다 호출되어 작은 변동을 누적한다.
+ *
+ * 교육 포인트: "주가는 매 순간 조금씩 움직인다. 큰 변동은
+ * 뉴스, 심리, 관성이 겹칠 때 발생한다."
+ *
+ * 스케일: 1주 ≈ 115틱 → 기존 1턴 효과를 ~100으로 나눔
+ */
+export function tickMarket(
+  state: MarketState,
+  tickCount: number,
+  dangerLevel: number,
+  weeklyRule?: WeeklyRule | null,
+): MarketState {
+  const rng = seededRandom(tickCount * 7919 + 31)
+  const newPrices: Record<string, number> = { ...state.prices }
+  const newHistories = [...state.priceHistories]
+  const newMomentum = { ...state.sectorMomentum }
+
+  // 주간 규칙 수치
+  const weeklyVolMult =
+    weeklyRule?.effect.type === 'volatile_week' ? weeklyRule.effect.multiplier
+    : weeklyRule?.effect.type === 'pandemic_week' ? weeklyRule.effect.volatilityMultiplier
+    : 1
+  const weeklyMomentumMult =
+    weeklyRule?.effect.type === 'fomo_week' ? weeklyRule.effect.bonusMomentum : 1
+
+  // 섹터별 뉴스 보너스 (현재 활성 효과에서)
+  const sectorBonus: Record<string, number> = {}
+  for (const effect of state.activeEffects) {
+    for (const si of effect.sectorImpacts) {
+      if (si.sector === 'all') {
+        for (const s of ['tech', 'energy', 'finance', 'consumer', 'healthcare']) {
+          sectorBonus[s] = (sectorBonus[s] || 0) + si.impact * 0.02 // 틱당 2% 적용
+        }
+      } else {
+        sectorBonus[si.sector] = (sectorBonus[si.sector] || 0) + si.impact * 0.02
+      }
+    }
+  }
+
+  // 각 주식 가격 업데이트
+  for (const stock of STOCKS) {
+    if (stock.isETF) continue
+    const currentPrice = state.prices[stock.id]
+
+    // 기본 트렌드 (작은 단위)
+    const trendEffect = state.marketTrend * 0.00005
+
+    // 뉴스/이벤트 효과
+    const eventEffect = (sectorBonus[stock.sector] || 0) * stock.newsSensitivity
+
+    // 모멘텀
+    const rawMomentum = (newMomentum[stock.sector] || 0) * 0.003 * weeklyMomentumMult
+
+    // 군중 심리
+    const herdEffect = state.herdSentiment * 0.0001
+
+    // 평균 회귀 (가격이 기준에서 멀어질수록 당김)
+    const meanReversionStrength = 0.002
+    const deviation = (currentPrice - stock.basePrice) / stock.basePrice
+    const meanReversion = -deviation * meanReversionStrength
+
+    // 랜덤 노이즈 (가우시안)
+    const baseNoise = gaussianRandom(rng) * stock.volatility * 0.0003
+    const dangerNoise = baseNoise * (1 + dangerLevel * 0.8)
+    const noise = dangerNoise * weeklyVolMult
+
+    // 합산
+    let totalChange = trendEffect + eventEffect + rawMomentum + herdEffect + meanReversion + noise
+
+    // 더블 오어 낫싱
+    if (weeklyRule?.effect.type === 'double_or_nothing') totalChange *= 2
+
+    // 안전 클램프: 단일 틱 최대 ±0.3%
+    totalChange = Math.max(-0.003, Math.min(0.003, totalChange))
+
+    const newPrice = Math.max(1, Math.round(currentPrice * (1 + totalChange) * 100) / 100)
+    newPrices[stock.id] = newPrice
+
+    // 모멘텀 업데이트 (섹터별 누적)
+    newMomentum[stock.sector] = (newMomentum[stock.sector] || 0) * 0.995 + totalChange * 0.5
+  }
+
+  // ETF 가격 계산 (구성 섹터 평균)
+  for (const etf of STOCKS.filter(s => s.isETF)) {
+    const sectorStocks = STOCKS.filter(s => !s.isETF && s.sector === etf.sector)
+    if (sectorStocks.length === 0) continue
+    const avgPrice = sectorStocks.reduce((sum, s) => sum + (newPrices[s.id] || 0), 0) / sectorStocks.length
+    const etfBase = etf.basePrice
+    const sectorAvgBase = sectorStocks.reduce((sum, s) => sum + s.basePrice, 0) / sectorStocks.length
+    newPrices[etf.id] = Math.max(1, Math.round((avgPrice / sectorAvgBase) * etfBase * 100) / 100)
+  }
+
+  // 가격 히스토리 업데이트 (매 틱마다 추가하면 너무 많으므로 10틱마다)
+  if (tickCount % 10 === 0) {
+    for (let i = 0; i < newHistories.length; i++) {
+      const h = newHistories[i]
+      newHistories[i] = {
+        ...h,
+        prices: [...h.prices, newPrices[h.stockId]],
+      }
+    }
+  }
+
+  // 활성 효과 remainingTurns 감소 (원래 턴 기반이므로 115틱마다 1 감소)
+  let newActiveEffects = state.activeEffects
+  if (tickCount % 115 === 0) {
+    newActiveEffects = state.activeEffects
+      .map(e => ({ ...e, remainingTurns: e.remainingTurns - 1 }))
+      .filter(e => e.remainingTurns > 0)
+  }
+
+  // 시장 트렌드 랜덤워크 (3틱마다)
+  let newMarketTrend = state.marketTrend
+  if (tickCount % 3 === 0) {
+    newMarketTrend = state.marketTrend * 0.998 + gaussianRandom(rng) * 0.3
+    newMarketTrend = Math.max(-5, Math.min(5, newMarketTrend))
+  }
+
+  // 군중 심리 (5틱마다)
+  let newHerdSentiment = state.herdSentiment
+  if (tickCount % 5 === 0) {
+    const avgReturn = Object.keys(newPrices).reduce((sum, id) => {
+      const prev = state.prices[id] || 1
+      return sum + (newPrices[id] - prev) / prev
+    }, 0) / Object.keys(newPrices).length
+    const drift = avgReturn * 20
+    const sentimentNoise = (rng() - 0.5) * 0.01
+    newHerdSentiment = state.herdSentiment * 0.98 + drift + sentimentNoise
+    newHerdSentiment = Math.max(-1, Math.min(1, newHerdSentiment))
+  }
+
+  return {
+    ...state,
+    prices: newPrices,
+    priceHistories: newHistories,
+    sectorMomentum: newMomentum,
+    activeEffects: newActiveEffects,
+    marketTrend: newMarketTrend,
+    herdSentiment: newHerdSentiment,
+  }
+}

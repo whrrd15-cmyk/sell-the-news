@@ -1,3 +1,22 @@
+// ============ 실시간 시간 시스템 ============
+
+export interface GameTime {
+  week: number          // 1-13 (분기 내 주차)
+  day: number           // 1-5 (월-금)
+  hour: number          // 9-17 (장시간)
+  minute: number        // 0-59
+  tickCount: number     // 분기 시작부터 누적 틱 수 (시드 RNG용)
+  totalSeconds: number  // 분기 시작부터 경과한 게임 내 초
+}
+
+export type TimeSpeed = 'paused' | '1x' | '2x' | '4x'
+
+export interface MarketSession {
+  isOpen: boolean       // 장중 (9:00-16:00)
+  preMarket: boolean    // 프리마켓 (8:00-9:00)
+  afterHours: boolean   // 애프터 (16:00-17:00)
+}
+
 // ============ 시장 상황 ============
 
 export type MarketCondition = 'bull_trend' | 'range_bound' | 'bear_market' | 'neutral'

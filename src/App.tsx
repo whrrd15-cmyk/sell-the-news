@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useGameStore } from './stores/gameStore'
 import { TitleScreen } from './components/layout/TitleScreen'
 import { GameScreen } from './components/layout/GameScreen'
+import { TradingTerminal } from './components/layout/TradingTerminal'
 import { ResultScreen } from './components/layout/ResultScreen'
 import { ShopScreen } from './components/layout/ShopScreen'
 import { MetaUpgradeScreen } from './components/layout/MetaUpgradeScreen'
@@ -9,12 +10,13 @@ import { SettingsScreen } from './components/layout/SettingsScreen'
 import { ClearScreen } from './components/layout/ClearScreen'
 import { OnboardingScreen } from './components/layout/OnboardingScreen'
 import { CRTOverlay } from './components/effects/CRTOverlay'
+import { FEATURES } from './data/features'
 import './index.css'
 
 const SCREEN_COMPONENTS: Record<string, React.FC> = {
   title: TitleScreen,
   onboarding: OnboardingScreen,
-  game: GameScreen,
+  game: FEATURES.MULTI_WINDOW_UI ? TradingTerminal : GameScreen,
   shop: ShopScreen,
   result: ResultScreen,
   meta: MetaUpgradeScreen,
