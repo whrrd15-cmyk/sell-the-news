@@ -29,7 +29,7 @@ export function TradePanel({
 }: TradePanelProps) {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy')
   const [quantity, setQuantity] = useState(0)
-  const [showAutoTrade, setShowAutoTrade] = useState(false)
+  const [showAutoTrade, setShowAutoTrade] = useState(true)
 
   const maxBuy = useMemo(() =>
     currentPrice > 0 ? Math.floor(portfolio.cash / currentPrice) : 0,

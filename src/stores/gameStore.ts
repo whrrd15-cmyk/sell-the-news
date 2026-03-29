@@ -18,7 +18,7 @@ import type {
   AutoTradeResult,
 } from '../data/types'
 import { RUN_CONFIGS } from '../data/types'
-import { createInitialMarketState, generatePreviousQuarter, simulateTurn, applyNewsEffect, calculateDangerLevel, type MarketState, type PriceChangeBreakdown } from '../engine/market'
+import { createInitialMarketState, generatePreviousQuarter, simulateTurn, applyNewsEffect, calculateDangerLevel, type MarketState, type PriceChangeBreakdown, type EffectHistoryEntry } from '../engine/market'
 import { createInitialPortfolio, buyStock, sellStock, awardReputation } from '../engine/portfolio'
 import { generateTurnNews } from '../engine/news'
 import { rollSpecialEvent, QUIZ_EVENTS } from '../data/specialEvents'
@@ -101,6 +101,7 @@ interface GameState {
     insuranceCompensation: number
     rpDoubled: boolean
     breakdowns: PriceChangeBreakdown[]
+    effectHistory: EffectHistoryEntry[]
     autoTradeResult?: AutoTradeResult
   } | null
 
@@ -559,6 +560,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         insuranceCompensation: Math.floor(insuranceCompensation),
         rpDoubled,
         breakdowns: simResult.breakdowns,
+        effectHistory: newMarket.effectHistory,
         autoTradeResult: autoTradeResult.executedTrades.length > 0 ? autoTradeResult : undefined,
       },
       stats: { ...stats },

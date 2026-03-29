@@ -6,8 +6,10 @@ import { getPortfolioValue, getTotalReturn } from '../../engine/portfolio'
 import CandlestickChart, { type ChartMarker } from '../charts/CandlestickChart'
 import { BalPanel } from '../ui/BalPanel'
 import { TradePanel } from '../trade/TradePanel'
-import { StockListPanel } from '../stocks/StockListPanel'
+import { StockCardStrip } from '../stocks/StockCardStrip'
+import { PortfolioOverview } from '../ui/PortfolioOverview'
 import { NewsPanel } from '../news/NewsPanel'
+import { SectorImpactSummary } from '../news/SectorImpactSummary'
 import { SpecialEventOverlay } from './SpecialEventOverlay'
 import { BalatroBackground } from '../effects/BalatroBackground'
 import type { BackgroundMood } from '../effects/BalatroBackground'
@@ -17,19 +19,14 @@ import { ShopIcon } from '../icons/SkillIcons'
 import { BalChip } from '../ui/BalChip'
 import { BreakingNewsBanner } from '../effects/BreakingNewsBanner'
 import { WeeklyRuleBanner } from '../effects/WeeklyRuleBanner'
-import { DangerGauge } from '../ui/DangerGauge'
 import { PhaseProgressBar } from '../ui/PhaseProgressBar'
 import { PhaseCTA } from '../ui/PhaseCTA'
-import { MiniStockStrip } from '../ui/MiniStockStrip'
 import { NewsReferenceDrawer } from '../ui/NewsReferenceDrawer'
 import { ScoreCascade } from '../effects/ScoreCascade'
 import { SpotlightTutorial } from '../tutorial/SpotlightTutorial'
 import { SECTOR_COLORS } from '../../data/constants'
-import { MarketMoodIndicator } from '../ui/MarketMoodIndicator'
-import { ActiveEffectsChip } from '../ui/ActiveEffectsChip'
-import { SectorHealthStrip } from '../ui/SectorHealthStrip'
-import { MarketConditionBadge } from '../ui/MarketConditionBadge'
 import { MarketConditionModal } from '../ui/MarketConditionModal'
+import { MarketPulseBar } from '../ui/MarketPulseBar'
 import { detectStockCondition } from '../../engine/marketCondition'
 import { SFX, bgm } from '../../utils/sound'
 
@@ -198,11 +195,6 @@ export function GameScreen() {
           </div>
         )}
       </div>
-      {selectedStockCondition !== 'neutral' && (
-        <div style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <MarketConditionBadge condition={selectedStockCondition} />
-        </div>
-      )}
     </BalPanel>
   )
 
@@ -257,16 +249,18 @@ export function GameScreen() {
         {/* ═══ 속보 배너 ═══ */}
         <BreakingNewsBanner />
 
-        {/* ═══ 주간 규칙 배너 + 위험 게이지 + 심리 + 활성효과 + 저주 아이템 ═══ */}
+        {/* ═══ 주간 규칙 배너 + 통합 시장 상태 바 ═══ */}
         <div className="flex items-center gap-2 px-2 flex-shrink-0">
           <WeeklyRuleBanner rule={currentWeeklyRule} />
-          <DangerGauge level={market.dangerLevel} />
-          <MarketMoodIndicator
+          <MarketPulseBar
+            marketConditions={marketConditions}
             herdSentiment={market.herdSentiment}
             panicLevel={market.panicLevel}
             maxBubble={Math.max(...Object.values(market.sectorBubble), 0)}
+            dangerLevel={market.dangerLevel}
+            activeEffects={market.activeEffects}
+            onOpenConditionModal={() => setShowMarketModal(true)}
           />
-          <ActiveEffectsChip effects={market.activeEffects} />
           {equippedCursedItems.length > 0 && (
             <div className="flex items-center gap-1 ml-auto">
               {equippedCursedItems.map((item, i) => (
@@ -296,19 +290,12 @@ export function GameScreen() {
                     <NewsPanel news={currentNews} unlockedSkills={unlockedSkills} />
                   </BalPanel>
                 </div>
-                <div data-tutorial="mini-stock-strip">
-                  <MiniStockStrip
-                    stocks={STOCKS}
-                    prices={market.prices}
-                    priceHistories={market.priceHistories}
-                    positions={portfolio.positions}
-                    selectedStockId={selectedStockId}
-                    onSelectStock={handleSelectStock}
-                  />
+                <div data-tutorial="sector-impact-summary">
+                  <SectorImpactSummary news={currentNews} />
                 </div>
               </motion.div>
             ) : phase === 'investment' ? (
-              /* ────── 투자 페이즈: 차트 + 매매 | 종목 리스트 ────── */
+              /* ────── 투자 페이즈: 차트+트레이드 | 종목카드 | 포트폴리오 ────── */
               <motion.div
                 key="investment"
                 initial={{ opacity: 0, x: -20 }}
@@ -319,8 +306,8 @@ export function GameScreen() {
               >
                 <div data-tutorial="chart-panel" style={{ gridArea: 'chart', display: 'flex', flexDirection: 'column', minHeight: 0 }}>{chartPanel}</div>
 
-                {/* 매매 패널 (차트 아래) */}
-                <div style={{ gridArea: 'trade' }} data-tutorial="trade-panel">
+                {/* 매매 패널 (사이드바) */}
+                <div style={{ gridArea: 'trade', minHeight: 0, overflow: 'auto' }} data-tutorial="trade-panel">
                   <TradePanel
                     stock={selectedStock}
                     currentPrice={currentPrice}
@@ -341,24 +328,21 @@ export function GameScreen() {
                   />
                 </div>
 
-                {/* 종목 리스트 (사이드바 전체) */}
-                <div className="flex flex-col gap-[6px] min-h-0 overflow-hidden" style={{ gridArea: 'sidebar' }} data-tutorial="stock-sidebar">
-                  {/* 섹터 건강 스트립 */}
-                  <SectorHealthStrip
-                    sectorMomentum={market.sectorMomentum}
-                    sectorBubble={market.sectorBubble}
-                    activeEffects={market.activeEffects}
+                {/* 종목 카드 스트립 (가로 스크롤) */}
+                <div style={{ gridArea: 'stocks' }}>
+                  <StockCardStrip
+                    stocks={STOCKS}
+                    prices={market.prices}
+                    priceHistories={market.priceHistories}
+                    positions={portfolio.positions}
+                    selectedStockId={selectedStockId}
+                    onSelectStock={handleSelectStock}
                   />
-                  <BalPanel label="종목" className="flex flex-col min-h-0 overflow-hidden flex-1">
-                    <StockListPanel
-                      stocks={STOCKS}
-                      prices={market.prices}
-                      priceHistories={market.priceHistories}
-                      positions={portfolio.positions}
-                      selectedStockId={selectedStockId}
-                      onSelectStock={handleSelectStock}
-                    />
-                  </BalPanel>
+                </div>
+
+                {/* 포트폴리오 개요 */}
+                <div style={{ gridArea: 'portfolio' }}>
+                  <PortfolioOverview portfolio={portfolio} prices={market.prices} />
                 </div>
 
               </motion.div>

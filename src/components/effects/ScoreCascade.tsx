@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { SFX } from '../../utils/sound'
 import { PriceBreakdownBar } from '../ui/PriceBreakdownBar'
-import type { PriceChangeBreakdown } from '../../engine/market'
+import type { PriceChangeBreakdown, EffectHistoryEntry } from '../../engine/market'
 import type { AutoTradeResult } from '../../data/types'
+import { CausalityAnnotation } from './CausalityAnnotation'
+import { STOCKS } from '../../data/stocks'
 
 interface CascadeData {
   portfolioValueBefore: number
@@ -15,6 +17,7 @@ interface CascadeData {
   insuranceCompensation: number
   rpDoubled: boolean
   breakdowns: PriceChangeBreakdown[]
+  effectHistory: EffectHistoryEntry[]
   autoTradeResult?: AutoTradeResult
 }
 
@@ -219,6 +222,13 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
                   </span>
                 </div>
                 {bd && <PriceBreakdownBar breakdown={bd} />}
+                {bd && (
+                  <CausalityAnnotation
+                    breakdown={bd}
+                    effectHistory={data.effectHistory}
+                    stockSector={STOCKS.find(s => s.id === sc.stockId)?.sector ?? 'tech'}
+                  />
+                )}
               </motion.div>
             )
           })
