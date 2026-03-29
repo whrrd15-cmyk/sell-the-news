@@ -153,11 +153,11 @@ export function TradePanel({
   if (phase !== 'investment') return null
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {/* ═══ 매수/매도 패널 ═══ */}
-      <div className="bal-panel overflow-hidden" style={{ borderColor: `${accentColor}44` }}>
-        {/* 탭 + 종목 정보 한 줄 */}
-        <div className="flex items-stretch border-b" style={{ borderColor: accentDim }}>
+    <div className="flex flex-col gap-1">
+      {/* ═══ 매수/매도 (인라인, 별도 패널 없음) ═══ */}
+      <div className="trade-inline" style={{ '--trade-accent': accentColor, '--trade-accent-dim': accentDim } as React.CSSProperties}>
+        {/* 탭 */}
+        <div className="trade-inline-tabs">
           <button
             className={`px-3 py-1.5 text-xs font-bold transition-all ${
               mode === 'buy'
@@ -311,9 +311,9 @@ export function TradePanel({
         )}
       </div>
 
-      {/* ═══ 자동 매매 패널 ═══ */}
+      {/* ═══ 자동 매매 ═══ */}
       {hasAnyAutoSkill && stock && (
-        <div className="bal-panel overflow-hidden" style={{ borderColor: '#7799ff33' }}>
+        <div className="trade-inline-auto">
           <button
             className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-bold text-[#7799ff]"
             onClick={() => setShowAutoTrade(!showAutoTrade)}

@@ -104,12 +104,13 @@ body {
    ═══════════════════════════════════════════ */
 .bal-panel {
   background-color: var(--color-bal-panel);
-  border: 1px solid var(--color-bal-border);
-  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.06),
-    0 4px 12px rgba(0,0,0,0.5);
-  backdrop-filter: blur(8px);
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 0 20px rgba(0,0,0,0.3),
+    0 2px 8px rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px);
 }
 
 .bal-panel-inset {
@@ -432,12 +433,28 @@ body {
   grid-template-areas:
     "tabs   tabs    tabs"
     "book   chart   order"
-    "log    chart   order";
-  grid-template-columns: 180px 1fr 280px;
-  grid-template-rows: auto 1fr 150px;
-  gap: 4px;
-  padding: 4px;
+    "log    log     order";
+  grid-template-columns: 160px 1fr 260px;
+  grid-template-rows: auto 1fr 140px;
+  gap: 3px;
+  padding: 3px;
   height: 100%;
+}
+/* CRT 스캔라인 오버레이 (매매 페이지) */
+.trading-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  mix-blend-mode: multiply;
 }
 
 /* 종목 탭바 */
@@ -577,6 +594,67 @@ body {
 .trade-log-table td {
   padding: 3px 6px;
   font-variant-numeric: tabular-nums;
+}
+
+/* CRT 스타일 반투명 패널 (매매 페이지 전용) */
+.trading-crt-panel {
+  background: rgba(15,15,30,0.5);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 25px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.trading-crt-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--color-bal-text-dim);
+  padding: 3px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+
+/* 주문 영역 (반투명 배경 + CRT 글로우) */
+.trading-order-area {
+  background: rgba(20,20,40,0.6);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.05);
+  overflow-y: auto;
+  padding: 6px;
+}
+
+/* 인라인 매매 폼 (CRT 스타일) */
+.trade-inline {
+  background: transparent;
+}
+.trade-inline-tabs {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 4px;
+}
+.trade-inline-auto {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 4px;
+  margin-top: 2px;
+}
+
+/* CRT 글로우 인풋 */
+.trade-inline .bal-input,
+.trade-inline input[type="number"] {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.4), 0 0 2px var(--trade-accent-dim);
+  color: var(--trade-accent);
+}
+.trade-inline .bal-input:focus,
+.trade-inline input[type="number"]:focus {
+  border-color: var(--trade-accent);
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.4), 0 0 6px var(--trade-accent-dim);
 }
 
 /* HUD 바 */

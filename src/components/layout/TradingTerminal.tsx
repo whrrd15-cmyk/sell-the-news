@@ -336,14 +336,13 @@ export function TradingTerminal() {
                 </div>
 
                 {/* 호가창 */}
-                <div style={{ gridArea: 'book' }}>
-                  <BalPanel label="호가" className="flex flex-col h-full overflow-hidden">
-                    <OrderBookPanel
-                      currentPrice={currentPrice}
-                      volatility={selectedStock?.volatility ?? 0.3}
-                      ticker={selectedStock?.ticker ?? ''}
-                    />
-                  </BalPanel>
+                <div className="trading-crt-panel" style={{ gridArea: 'book' }}>
+                  <div className="trading-crt-label">호가</div>
+                  <OrderBookPanel
+                    currentPrice={currentPrice}
+                    volatility={selectedStock?.volatility ?? 0.3}
+                    ticker={selectedStock?.ticker ?? ''}
+                  />
                 </div>
 
                 {/* 차트 */}
@@ -367,28 +366,24 @@ export function TradingTerminal() {
                   </BalPanel>
                 </div>
 
-                {/* 주문서 */}
-                <div style={{ gridArea: 'order', overflow: 'auto' }}>
-                  <BalPanel label="주문" className="flex flex-col h-full overflow-hidden">
-                    <TradingPanel
-                      stock={selectedStock} currentPrice={currentPrice} priceChange={priceChange}
-                      portfolio={portfolio} position={selectedPosition}
-                      onBuy={handleBuy} onSell={handleSell}
-                      shortPositions={shortPositions} onOpenShort={handleOpenShort} onCoverShort={handleCoverShort}
-                      leveragedPositions={leveragedPositions} onBuyLeverage={handleBuyLeverage} onCloseLeverage={handleCloseLeverage}
-                      maxLeverage={maxLeverage}
-                      activeOrders={activeOrders} onCreateOrder={handleCreateOrder} onCancelOrder={handleCancelOrder}
-                      unlockedSkills={unlockedSkills} stockCondition={selectedStockCondition}
-                      autoTradeRules={autoTradeRules} onAddAutoTradeRule={addAutoTradeRule} onRemoveAutoTradeRule={removeAutoTradeRule}
-                    />
-                  </BalPanel>
+                {/* 주문서 (인라인 — 별도 패널 없음) */}
+                <div className="trading-order-area" style={{ gridArea: 'order' }}>
+                  <TradingPanel
+                    stock={selectedStock} currentPrice={currentPrice} priceChange={priceChange}
+                    portfolio={portfolio} position={selectedPosition}
+                    onBuy={handleBuy} onSell={handleSell}
+                    shortPositions={shortPositions} onOpenShort={handleOpenShort} onCoverShort={handleCoverShort}
+                    leveragedPositions={leveragedPositions} onBuyLeverage={handleBuyLeverage} onCloseLeverage={handleCloseLeverage}
+                    maxLeverage={maxLeverage}
+                    activeOrders={activeOrders} onCreateOrder={handleCreateOrder} onCancelOrder={handleCancelOrder}
+                    unlockedSkills={unlockedSkills} stockCondition={selectedStockCondition}
+                    autoTradeRules={autoTradeRules} onAddAutoTradeRule={addAutoTradeRule} onRemoveAutoTradeRule={removeAutoTradeRule}
+                  />
                 </div>
 
                 {/* 체결/포지션 */}
-                <div style={{ gridArea: 'log' }}>
-                  <BalPanel label="포지션" className="flex flex-col h-full overflow-hidden">
-                    <TradeLogPanel portfolio={portfolio} prices={market.prices} />
-                  </BalPanel>
+                <div className="trading-crt-panel" style={{ gridArea: 'log' }}>
+                  <TradeLogPanel portfolio={portfolio} prices={market.prices} />
                 </div>
               </div>
             )}
