@@ -203,16 +203,19 @@ export type SkillEffect =
   | { type: 'stale_detection' }
   | { type: 'leverage'; multiplier: number }
   | { type: 'short_selling' }
-  | { type: 'double_trade' }
   | { type: 'stop_loss'; threshold: number }
-  | { type: 'trend_following' }
   | { type: 'dca'; portions: number }
   | { type: 'trailing_stop'; defaultTarget: number }
-  | { type: 'range_rebalance' }
   | { type: 'forex_hedge'; feeReduction: number }
   | { type: 'dividend'; rate: number }
-  | { type: 'intuition'; chance: number }
   | { type: 'interest'; rate: number }
+  // 신규 스킬 효과
+  | { type: 'social_analysis' }
+  | { type: 'correlation_view' }
+  | { type: 'noise_filter' }
+  | { type: 'portfolio_hedge' }
+  | { type: 'compound_interest' }
+  | { type: 'market_intuition' }
 
 // ============ 아이템 관련 ============
 

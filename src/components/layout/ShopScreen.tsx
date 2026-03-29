@@ -3,9 +3,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useGameStore } from '../../stores/gameStore'
 import { SKILLS, SKILL_CATEGORY_LABELS } from '../../data/skills'
 import { RARITY_COLORS, RARITY_LABELS } from '../../data/items'
-import { QUIZ_EVENTS } from '../../data/specialEvents'
 import { BalatroBackground } from '../effects/BalatroBackground'
-import { QuizLoanModal } from '../ui/QuizLoanModal'
 import { SFX, bgm } from '../../utils/sound'
 import { getSkillIcon, getItemIcon } from '../icons/SkillIcons'
 import type { Skill, SkillCategory, Item } from '../../data/types'
@@ -21,38 +19,17 @@ const CATEGORY_COLORS: Record<SkillCategory, string> = {
 }
 
 export function ShopScreen() {
-  const { portfolio, unlockedSkills, unlockSkill, inventory, shopItems, buyItem, nextTurn, setScreen, shopSource, usedQuizIds, rerollShopItems, shopRerollCount } = useGameStore()
+  const { portfolio, unlockedSkills, unlockSkill, inventory, shopItems, buyItem, nextTurn, setScreen, shopSource, rerollShopItems, shopRerollCount } = useGameStore()
   const [activeTab, setActiveTab] = useState<ShopTab>('skills')
   const [selectedCategory, setSelectedCategory] = useState<SkillCategory>('analysis')
   const [purchaseAnimation, setPurchaseAnimation] = useState<string | null>(null)
-  const [quizLoan, setQuizLoan] = useState<{ shortfall: number; itemName: string; onPurchase: () => void } | null>(null)
 
   useEffect(() => { SFX.shopEnter(); bgm.crossFadeTo('shop') }, [])
-
-  const hasQuizzesLeft = QUIZ_EVENTS.some(q => !usedQuizIds.has(q.id))
 
   const handleBuySkill = (skill: Skill) => {
     if (unlockedSkills.includes(skill.id)) return
     if (skill.prerequisiteId && !unlockedSkills.includes(skill.prerequisiteId)) return
-
-    if (portfolio.reputationPoints < skill.cost) {
-      // RP 부족 → 퀴즈 대출
-      if (hasQuizzesLeft) {
-        const shortfall = skill.cost - portfolio.reputationPoints
-        setQuizLoan({
-          shortfall,
-          itemName: skill.name,
-          onPurchase: () => {
-            SFX.skillBuy()
-            unlockSkill(skill.id, skill.cost)
-            setPurchaseAnimation(skill.id)
-            setTimeout(() => setPurchaseAnimation(null), 1000)
-            setQuizLoan(null)
-          },
-        })
-      }
-      return
-    }
+    if (portfolio.reputationPoints < skill.cost) return
 
     SFX.skillBuy()
     unlockSkill(skill.id, skill.cost)
@@ -61,24 +38,8 @@ export function ShopScreen() {
   }
 
   const handleBuyItem = (item: Item) => {
-    if (portfolio.reputationPoints < item.cost) {
-      // RP 부족 → 퀴즈 대출
-      if (hasQuizzesLeft) {
-        const shortfall = item.cost - portfolio.reputationPoints
-        setQuizLoan({
-          shortfall,
-          itemName: item.name,
-          onPurchase: () => {
-            SFX.skillBuy()
-            buyItem(item)
-            setPurchaseAnimation(item.id)
-            setTimeout(() => setPurchaseAnimation(null), 1000)
-            setQuizLoan(null)
-          },
-        })
-      }
-      return
-    }
+    if (portfolio.reputationPoints < item.cost) return
+
     SFX.skillBuy()
     buyItem(item)
     setPurchaseAnimation(item.id)
@@ -156,9 +117,8 @@ export function ShopScreen() {
                 const isOwned = unlockedSkills.includes(skill.id)
                 const canAfford = portfolio.reputationPoints >= skill.cost
                 const hasPrereq = !skill.prerequisiteId || unlockedSkills.includes(skill.prerequisiteId)
-                const canQuizLoan = !canAfford && hasQuizzesLeft && hasPrereq
                 const canBuy = !isOwned && canAfford && hasPrereq
-                const isClickable = !isOwned && (canBuy || canQuizLoan)
+                const isClickable = canBuy
                 const isPurchasing = purchaseAnimation === skill.id
 
                 return (
@@ -186,9 +146,8 @@ export function ShopScreen() {
                         <div className="flex items-center justify-between mb-1">
                           <h3 className="text-white text-sm font-bold">{skill.name}</h3>
                           {!isOwned && (
-                            <span className={`text-xs font-bold flex items-center gap-1 ${canAfford ? 'text-bal-purple' : canQuizLoan ? 'text-yellow-400' : 'text-bal-red'}`}>
-                              {!canAfford && canQuizLoan && <span title="퀴즈로 충당 가능">📝</span>}
-                              {skill.cost} RP
+                            <span className={`text-xs font-bold flex items-center gap-1 ${canAfford ? 'text-bal-purple' : 'text-bal-red'}`}>
+                                                            {skill.cost} RP
                             </span>
                           )}
                         </div>
@@ -244,8 +203,7 @@ export function ShopScreen() {
               {shopItems.map((item, i) => {
                 const rc = RARITY_COLORS[item.rarity]
                 const canAfford = portfolio.reputationPoints >= item.cost
-                const canQuizLoanItem = !canAfford && hasQuizzesLeft
-                const isClickable = canAfford || canQuizLoanItem
+                const isClickable = canAfford
                 const isCursed = item.isCursed
                 return (
                   <motion.div key={`${item.id}-${i}`}
@@ -259,8 +217,7 @@ export function ShopScreen() {
                         {isCursed ? '저주' : RARITY_LABELS[item.rarity]}
                       </span>
                       <span className={`text-xs font-bold flex items-center gap-1 ${canAfford ? 'text-bal-purple' : canQuizLoanItem ? 'text-yellow-400' : 'text-bal-red'}`}>
-                        {canQuizLoanItem && <span title="퀴즈로 충당 가능">📝</span>}
-                        {item.cost} RP
+                                                {item.cost} RP
                       </span>
                     </div>
                     <div className="flex items-start gap-3">
@@ -301,16 +258,6 @@ export function ShopScreen() {
         {shopSource === 'manual' ? '돌아가기' : '다음 턴으로'}
       </motion.button>
 
-      <AnimatePresence>
-        {quizLoan && (
-          <QuizLoanModal
-            shortfall={quizLoan.shortfall}
-            itemName={quizLoan.itemName}
-            onSuccess={quizLoan.onPurchase}
-            onClose={() => setQuizLoan(null)}
-          />
-        )}
-      </AnimatePresence>
     </div>
   )
 }
