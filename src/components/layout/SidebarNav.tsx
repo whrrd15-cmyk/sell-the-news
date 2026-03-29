@@ -20,7 +20,7 @@ interface SidebarNavProps {
 const NAV_ITEMS: { id: PageId; icon: string; label: string; color: string }[] = [
   { id: 'trading', icon: '📊', label: '매매', color: '#5ec269' },
   { id: 'news', icon: '📰', label: '뉴스', color: '#5b9bd5' },
-  { id: 'analysis', icon: '🔍', label: '분석', color: '#e88c3a' },
+  { id: 'analysis', icon: '💬', label: '사회', color: '#e88c3a' },
 ]
 
 export function SidebarNav({ activePage, onNavigate, unreadNewsCount = 0 }: SidebarNavProps) {

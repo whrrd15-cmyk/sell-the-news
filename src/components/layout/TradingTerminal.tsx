@@ -9,12 +9,13 @@ import { BalPanel } from '../ui/BalPanel'
 import { TradingPanel } from '../trade/TradingPanel'
 import type { ShortPosition, LeveragedPosition, LimitOrder } from '../../data/types'
 import { openShort, coverShort, buyWithLeverage, closeLeveragedPosition, checkOrderFill } from '../../engine/portfolio'
-import { StockCardStrip } from '../stocks/StockCardStrip'
-import { PortfolioOverview } from '../ui/PortfolioOverview'
+import { StockTabBar } from '../trade/StockTabBar'
+import { OrderBookPanel } from '../trade/OrderBookPanel'
+import { TradeLogPanel } from '../trade/TradeLogPanel'
 import { MarketConditionModal } from '../ui/MarketConditionModal'
 import { SidebarNav, type PageId } from './SidebarNav'
 import { NewsPage } from '../pages/NewsPage'
-import { AnalysisPage } from '../pages/AnalysisPage'
+import { SocialPage } from '../pages/SocialPage'
 import { BalatroBackground } from '../effects/BalatroBackground'
 import type { BackgroundMood } from '../effects/BalatroBackground'
 import { BalChip } from '../ui/BalChip'
@@ -324,25 +325,32 @@ export function TradingTerminal() {
           {/* ═══ 페이지 콘텐츠 ═══ */}
           <div className="flex-1 min-h-0 overflow-hidden">
             {activePage === 'trading' && (
-              /* ════ 매매 페이지: 원시 정보만 ════ */
-              <div className="trading-terminal">
-                <div className="trading-news" style={{ gridArea: 'news' }}>
-                  <BalPanel label={`속보${newsUnreadCount > 0 ? ` (${newsUnreadCount})` : ''}`} className="flex flex-col h-full overflow-hidden">
-                    <NewsFeedPanel
-                      news={allNews}
-                      freshness={newsFreshness}
-                      unreadCount={newsUnreadCount}
-                      onMarkRead={newsMarkRead}
-                      unlockedSkills={unlockedSkills}
-                      showImpactTags={false}
+              /* ════ 매매 페이지: 바이낸스 스타일 ════ */
+              <div className="trading-page">
+                {/* 종목 탭바 */}
+                <div style={{ gridArea: 'tabs' }}>
+                  <StockTabBar
+                    stocks={STOCKS} prices={market.prices} positions={portfolio.positions}
+                    selectedStockId={selectedStockId} onSelectStock={handleSelectStock}
+                  />
+                </div>
+
+                {/* 호가창 */}
+                <div style={{ gridArea: 'book' }}>
+                  <BalPanel label="호가" className="flex flex-col h-full overflow-hidden">
+                    <OrderBookPanel
+                      currentPrice={currentPrice}
+                      volatility={selectedStock?.volatility ?? 0.3}
+                      ticker={selectedStock?.ticker ?? ''}
                     />
                   </BalPanel>
                 </div>
 
-                <div className="trading-chart" style={{ gridArea: 'chart' }}>
+                {/* 차트 */}
+                <div style={{ gridArea: 'chart' }}>
                   <BalPanel
                     label={selectedStock
-                      ? `${selectedStock.name} (${selectedStock.ticker})  $${currentPrice.toFixed(0)}  ${priceChange >= 0 ? '▲' : '▼'}${(priceChange * 100).toFixed(1)}%`
+                      ? `${selectedStock.ticker}  $${currentPrice.toFixed(0)}  ${priceChange >= 0 ? '▲' : '▼'}${(priceChange * 100).toFixed(1)}%`
                       : '차트'}
                     accentColor={selectedStock ? SECTOR_COLORS[selectedStock.sector] : undefined}
                     className="flex flex-col h-full"
@@ -359,8 +367,9 @@ export function TradingTerminal() {
                   </BalPanel>
                 </div>
 
-                <div className="trading-trade" style={{ gridArea: 'trading' }}>
-                  <BalPanel label="매매" className="flex flex-col h-full overflow-hidden">
+                {/* 주문서 */}
+                <div style={{ gridArea: 'order', overflow: 'auto' }}>
+                  <BalPanel label="주문" className="flex flex-col h-full overflow-hidden">
                     <TradingPanel
                       stock={selectedStock} currentPrice={currentPrice} priceChange={priceChange}
                       portfolio={portfolio} position={selectedPosition}
@@ -375,12 +384,11 @@ export function TradingTerminal() {
                   </BalPanel>
                 </div>
 
-                <div className="trading-bottom" style={{ gridArea: 'bottom' }}>
-                  <div className="trading-bottom-inner">
-                    <StockCardStrip stocks={STOCKS} prices={market.prices} priceHistories={market.priceHistories}
-                      positions={portfolio.positions} selectedStockId={selectedStockId} onSelectStock={handleSelectStock} />
-                    <PortfolioOverview portfolio={portfolio} prices={market.prices} />
-                  </div>
+                {/* 체결/포지션 */}
+                <div style={{ gridArea: 'log' }}>
+                  <BalPanel label="포지션" className="flex flex-col h-full overflow-hidden">
+                    <TradeLogPanel portfolio={portfolio} prices={market.prices} />
+                  </BalPanel>
                 </div>
               </div>
             )}
@@ -391,17 +399,14 @@ export function TradingTerminal() {
             )}
 
             {activePage === 'analysis' && (
-              /* ════ 분석 페이지: 가공된 지표 ════ */
-              <AnalysisPage
-                marketConditions={marketConditions}
+              /* ════ 사회정보 페이지: 원문 데이터 ════ */
+              <SocialPage
                 herdSentiment={market.herdSentiment}
                 panicLevel={market.panicLevel}
-                maxBubble={Math.max(...Object.values(market.sectorBubble), 0)}
-                dangerLevel={market.dangerLevel}
-                activeEffects={market.activeEffects}
-                sectorMomentum={market.sectorMomentum}
-                sectorBubble={market.sectorBubble}
-                news={allNews}
+                tickCount={gameTime.tickCount}
+                runNumber={runConfig?.runNumber ?? 1}
+                week={gameTime.week}
+                marketTrend={market.marketTrend}
               />
             )}
           </div>
