@@ -79,10 +79,10 @@ export function OrderPanel({
           placeholder="목표 가격"
         />
         <div className="flex gap-1 mt-1">
-          {(orderType === 'buy_limit' || orderType === 'stop_loss')
+          {((orderType === 'buy_limit' || orderType === 'stop_loss')
             ? [{ label: '-3%', pct: -0.03 }, { label: '-5%', pct: -0.05 }, { label: '-10%', pct: -0.10 }]
             : [{ label: '+3%', pct: 0.03 }, { label: '+5%', pct: 0.05 }, { label: '+10%', pct: 0.10 }]
-          .map(({ label, pct }) => (
+          ).map(({ label, pct }) => (
             <button key={label} className="flex-1 py-0.5 text-[9px] rounded font-bold"
               style={{ background: `${typeInfo.color}15`, color: typeInfo.color }}
               onClick={() => presetPrice(pct)}
