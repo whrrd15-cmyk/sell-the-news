@@ -190,7 +190,7 @@ export function TradePanel({
         </div>
 
         {stock ? (
-          <div className="p-2 space-y-2">
+          <div className="px-2 py-1.5 space-y-1.5">
             {/* 추세 매매: 올인 매수 버튼 */}
             {showTrendBuy && tradesRemaining > 0 && (
               <button
@@ -271,21 +271,9 @@ export function TradePanel({
               </div>
             )}
 
-            {/* 남은 거래 횟수 */}
-            <div className="flex items-center justify-center gap-1 text-[10px]">
-              <span className="text-bal-text-dim">거래</span>
-              {Array.from({ length: tradeLimit }, (_, i) => (
-                <span
-                  key={i}
-                  className={`w-2 h-2 rounded-full ${i < tradesRemaining ? 'bg-[#f0b429]' : 'bg-[#ffffff15]'}`}
-                />
-              ))}
-              <span className={tradesRemaining > 0 ? 'text-[#f0b429]' : 'text-bal-red'}>{tradesRemaining}/{tradeLimit}</span>
-            </div>
-
             {/* 실행 버튼 */}
             <button
-              className={`w-full py-2 text-xs font-bold rounded-lg transition-all ${
+              className={`w-full py-1.5 text-xs font-bold rounded-lg transition-all ${
                 quantity > 0 && tradesRemaining > 0 ? '' : 'opacity-30 cursor-not-allowed'
               }`}
               style={{
