@@ -67,6 +67,22 @@ export const WEEKLY_RULES: WeeklyRule[] = [
     effect: { type: 'flash_crash_risk', probability: 0.15 },
     minQuarter: 5,
   },
+  {
+    id: 'pandemic_week',
+    name: '팬데믹 주간',
+    description: '변동성 3배 + 공포 지수 급등! 극한 공포를 체험하세요',
+    icon: '🦠',
+    effect: { type: 'pandemic_week', volatilityMultiplier: 3.0, panicBoost: 0.3 },
+    minQuarter: 5,
+  },
+  {
+    id: 'strategy_week',
+    name: '전략 주간',
+    description: '섹터별로 다른 시장 상황이 펼쳐집니다. 전략을 분산하세요',
+    icon: '🎯',
+    effect: { type: 'strategy_week' },
+    minQuarter: 3,
+  },
 ]
 
 export function rollWeeklyRule(

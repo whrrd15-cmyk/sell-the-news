@@ -1,3 +1,30 @@
+// ============ 시장 상황 ============
+
+export type MarketCondition = 'bull_trend' | 'range_bound' | 'bear_market' | 'neutral'
+
+// ============ 자동 매매 ============
+
+export interface AutoTradeRule {
+  id: string
+  type: 'stop_loss' | 'trailing_stop' | 'dca' | 'rebalance'
+  stockId: string
+  params: {
+    threshold?: number       // stop_loss: -0.10, trailing_stop: +0.10
+    dcaAmount?: number       // DCA 1회 매수 금액
+    dcaBasePrice?: number    // DCA 기준 가격
+    portionsBought?: number  // DCA 완료 횟수
+    maxPortions?: number     // DCA 총 분할 수
+    rangeHigh?: number       // 리밸런싱 상단
+    rangeLow?: number        // 리밸런싱 하단
+    remainingTurns?: number  // 아이템용 (n턴 자동매수)
+  }
+}
+
+export interface AutoTradeResult {
+  executedTrades: { stockId: string; action: 'buy' | 'sell'; shares: number; price: number; rule: string }[]
+  educationalNotes: string[]
+}
+
 // ============ 자산 관련 ============
 
 export type Sector = 'tech' | 'energy' | 'finance' | 'consumer' | 'healthcare'
@@ -123,6 +150,11 @@ export type SkillEffect =
   | { type: 'short_selling' }
   | { type: 'double_trade' }
   | { type: 'stop_loss'; threshold: number }
+  | { type: 'trend_following' }
+  | { type: 'dca'; portions: number }
+  | { type: 'trailing_stop'; defaultTarget: number }
+  | { type: 'range_rebalance' }
+  | { type: 'forex_hedge'; feeReduction: number }
   | { type: 'dividend'; rate: number }
   | { type: 'intuition'; chance: number }
   | { type: 'interest'; rate: number }
@@ -170,6 +202,8 @@ export type WeeklyRuleEffect =
   | { type: 'fog_of_war' }
   | { type: 'news_overload'; extraNews: number }
   | { type: 'flash_crash_risk'; probability: number }
+  | { type: 'pandemic_week'; volatilityMultiplier: number; panicBoost: number }
+  | { type: 'strategy_week' }
 
 // ============ 게임 상태 ============
 

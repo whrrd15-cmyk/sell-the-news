@@ -205,9 +205,19 @@ export function simulateTurn(
     }
   }
 
+  // 팬데믹 주간: 패닉 즉시 주입
+  if (weeklyRule?.effect.type === 'pandemic_week') {
+    state = {
+      ...state,
+      panicLevel: Math.min(1.0, state.panicLevel + weeklyRule.effect.panicBoost),
+    }
+  }
+
   // 주간 규칙 수치들
   const weeklyVolMult =
-    weeklyRule?.effect.type === 'volatile_week' ? weeklyRule.effect.multiplier : 1
+    weeklyRule?.effect.type === 'volatile_week' ? weeklyRule.effect.multiplier
+    : weeklyRule?.effect.type === 'pandemic_week' ? weeklyRule.effect.volatilityMultiplier
+    : 1
   const weeklyMomentumMult =
     weeklyRule?.effect.type === 'fomo_week' ? weeklyRule.effect.bonusMomentum : 1
   const weeklyDoubleRate =

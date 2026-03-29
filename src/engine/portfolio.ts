@@ -20,11 +20,12 @@ export function buyStock(
   stockId: string,
   price: number,
   amount: number, // 투자할 금액
+  feeReduction: number = 0, // 환율 헤지 수수료 감소
 ): Portfolio {
   const shares = Math.floor(amount / price)
   if (shares <= 0) return portfolio
 
-  const TRADE_FEE = 0.005 // 0.5% 수수료
+  const TRADE_FEE = Math.max(0.001, 0.005 - feeReduction) // 기본 0.5%, 환율 헤지 시 감소
   const totalCost = shares * price * (1 + TRADE_FEE)
   if (totalCost > portfolio.cash) return portfolio
 
@@ -64,6 +65,7 @@ export function sellStock(
   stockId: string,
   price: number,
   sharesToSell: number,
+  feeReduction: number = 0,
 ): Portfolio {
   const positionIdx = portfolio.positions.findIndex((p) => p.stockId === stockId)
   if (positionIdx < 0) return portfolio
@@ -72,7 +74,7 @@ export function sellStock(
   const actualShares = Math.min(sharesToSell, position.shares)
   if (actualShares <= 0) return portfolio
 
-  const TRADE_FEE = 0.005 // 0.5% 수수료
+  const TRADE_FEE = Math.max(0.001, 0.005 - feeReduction)
   const revenue = actualShares * price * (1 - TRADE_FEE)
   const newPositions = [...portfolio.positions]
 

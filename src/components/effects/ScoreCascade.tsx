@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { SFX } from '../../utils/sound'
 import { PriceBreakdownBar } from '../ui/PriceBreakdownBar'
 import type { PriceChangeBreakdown } from '../../engine/market'
+import type { AutoTradeResult } from '../../data/types'
 
 interface CascadeData {
   portfolioValueBefore: number
@@ -14,6 +15,7 @@ interface CascadeData {
   insuranceCompensation: number
   rpDoubled: boolean
   breakdowns: PriceChangeBreakdown[]
+  autoTradeResult?: AutoTradeResult
 }
 
 interface NewsFeedback {
@@ -28,7 +30,7 @@ interface ScoreCascadeProps {
   onComplete: () => void
 }
 
-type Phase = 'news' | 'stocks' | 'items' | 'counter' | 'interest' | 'rp' | 'summary'
+type Phase = 'news' | 'stocks' | 'items' | 'autoTrades' | 'counter' | 'interest' | 'rp' | 'summary'
 
 interface ItemEffect {
   icon: string
@@ -42,8 +44,10 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
   const [newsIdx, setNewsIdx] = useState(0)
   const [stockIdx, setStockIdx] = useState(0)
   const [itemIdx, setItemIdx] = useState(0)
+  const [autoTradeIdx, setAutoTradeIdx] = useState(0)
   const [counterValue, setCounterValue] = useState(data.portfolioValueBefore)
   const counterRef = useRef<number>(0)
+  const autoTrades = data.autoTradeResult?.executedTrades ?? []
 
   // Build item effects list
   const itemEffects: ItemEffect[] = []
@@ -77,10 +81,10 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
   // Stock cascade
   useEffect(() => {
     if (phase !== 'stocks') return
-    if (data.stockChanges.length === 0) { advancePhase(itemEffects.length > 0 ? 'items' : 'counter'); return }
+    const nextAfterStocks = itemEffects.length > 0 ? 'items' : autoTrades.length > 0 ? 'autoTrades' : 'counter'
+    if (data.stockChanges.length === 0) { advancePhase(nextAfterStocks); return }
     if (stockIdx >= data.stockChanges.length) {
-      const next = itemEffects.length > 0 ? 'items' : 'counter'
-      const t = setTimeout(() => advancePhase(next), 200)
+      const t = setTimeout(() => advancePhase(nextAfterStocks), 200)
       return () => clearTimeout(t)
     }
     const change = data.stockChanges[stockIdx]
@@ -94,7 +98,8 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
   useEffect(() => {
     if (phase !== 'items') return
     if (itemIdx >= itemEffects.length) {
-      const t = setTimeout(() => advancePhase('counter'), 300)
+      const next = autoTrades.length > 0 ? 'autoTrades' : 'counter'
+      const t = setTimeout(() => advancePhase(next), 300)
       return () => clearTimeout(t)
     }
     const effect = itemEffects[itemIdx]
@@ -102,7 +107,19 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
     else SFX.chipCount()
     const t = setTimeout(() => setItemIdx(i => i + 1), 400)
     return () => clearTimeout(t)
-  }, [phase, itemIdx, itemEffects, advancePhase])
+  }, [phase, itemIdx, itemEffects, advancePhase, autoTrades.length])
+
+  // Auto-trade cascade
+  useEffect(() => {
+    if (phase !== 'autoTrades') return
+    if (autoTradeIdx >= autoTrades.length) {
+      const t = setTimeout(() => advancePhase('counter'), 300)
+      return () => clearTimeout(t)
+    }
+    SFX.chipCount()
+    const t = setTimeout(() => setAutoTradeIdx(i => i + 1), 350)
+    return () => clearTimeout(t)
+  }, [phase, autoTradeIdx, autoTrades, advancePhase])
 
   // Counter animation
   useEffect(() => {
@@ -157,7 +174,7 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
   const valueDiff = data.portfolioValueAfter - data.portfolioValueBefore
   const isGain = valueDiff >= 0
   const phaseGte = (target: Phase) => {
-    const order: Phase[] = ['news', 'stocks', 'items', 'counter', 'interest', 'rp', 'summary']
+    const order: Phase[] = ['news', 'stocks', 'items', 'autoTrades', 'counter', 'interest', 'rp', 'summary']
     return order.indexOf(phase) >= order.indexOf(target)
   }
 
@@ -224,6 +241,44 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
             </motion.div>
           ))
         }
+      </AnimatePresence>
+
+      {/* 자동 매매 결과 */}
+      <AnimatePresence>
+        {phaseGte('autoTrades') && !['news', 'stocks', 'items'].includes(phase) && autoTrades.length > 0 && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              style={{ fontSize: 11, color: '#7799ff', fontWeight: 700, marginTop: 8, marginBottom: 4 }}
+            >
+              🤖 자동 매매 실행
+            </motion.div>
+            {autoTrades.slice(0, autoTradeIdx).map((trade, i) => (
+              <motion.div
+                key={`at-${i}`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '3px 8px',
+                  fontSize: 11,
+                  color: trade.action === 'buy' ? '#5ec269' : '#e8534a',
+                  background: trade.action === 'buy' ? 'rgba(94,194,105,0.08)' : 'rgba(232,83,74,0.08)',
+                  borderRadius: 4,
+                  marginBottom: 2,
+                }}
+              >
+                <span>{trade.action === 'buy' ? '📥' : '📤'}</span>
+                <span style={{ fontWeight: 600 }}>{trade.rule}</span>
+                <span style={{ color: '#8888aa' }}>×{trade.shares}주</span>
+                <span style={{ color: '#8888aa' }}>${trade.price.toFixed(0)}</span>
+              </motion.div>
+            ))}
+          </>
+        )}
       </AnimatePresence>
 
       {/* 포트폴리오 카운터 */}

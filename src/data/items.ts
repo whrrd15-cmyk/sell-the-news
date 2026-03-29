@@ -80,6 +80,37 @@ export const ITEMS: Item[] = [
     effect: 'undo_last_trade',
   },
 
+  // ===== Rare (신규) =====
+  {
+    id: 'auto_dca_token',
+    name: '자동 적립식 매수권',
+    description: '종목을 선택하면 3턴간 매 턴 $500 자동 매수합니다',
+    rarity: 'rare',
+    cost: 20,
+    isConsumable: true,
+    effect: 'auto_dca_3_turns',
+  },
+  {
+    id: 'panic_shield',
+    name: '공포 방어막',
+    description: '다음 턴 패닉 레벨 효과를 무효화합니다',
+    rarity: 'rare',
+    cost: 22,
+    isConsumable: true,
+    effect: 'nullify_panic',
+  },
+
+  // ===== Uncommon (신규) =====
+  {
+    id: 'market_condition_report',
+    name: '시장 상황 리포트',
+    description: '모든 섹터의 현재 시장 상황과 추천 전략을 보여줍니다',
+    rarity: 'uncommon',
+    cost: 12,
+    isConsumable: true,
+    effect: 'reveal_market_condition',
+  },
+
   // ===== Legendary =====
   {
     id: 'crystal_ball',

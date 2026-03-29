@@ -13,6 +13,9 @@ import type {
   BreakingNewsData,
   WeeklyRule,
   Item,
+  MarketCondition,
+  AutoTradeRule,
+  AutoTradeResult,
 } from '../data/types'
 import { RUN_CONFIGS } from '../data/types'
 import { createInitialMarketState, generatePreviousQuarter, simulateTurn, applyNewsEffect, calculateDangerLevel, type MarketState, type PriceChangeBreakdown } from '../engine/market'
@@ -25,6 +28,8 @@ import { loadMetaProgress, saveMetaProgress, getStartingCashBonus, getStartingRP
 import { writeSaveData, deleteSaveData, type SaveData } from '../utils/save'
 import { generateShopItems } from '../data/items'
 import { STOCKS } from '../data/stocks'
+import { detectSectorConditions } from '../engine/marketCondition'
+import { processAutoTrades } from '../engine/autoTrade'
 
 interface GameState {
   // 화면 상태
@@ -96,6 +101,7 @@ interface GameState {
     insuranceCompensation: number
     rpDoubled: boolean
     breakdowns: PriceChangeBreakdown[]
+    autoTradeResult?: AutoTradeResult
   } | null
 
   // 메타 진행
@@ -138,6 +144,14 @@ interface GameState {
   // 주간 특수 규칙
   currentWeeklyRule: WeeklyRule | null
   usedWeeklyRuleIds: string[]
+
+  // 시장 상황 감지
+  marketConditions: Record<string, MarketCondition>
+
+  // 자동 매매
+  autoTradeRules: AutoTradeRule[]
+  addAutoTradeRule: (rule: AutoTradeRule) => void
+  removeAutoTradeRule: (id: string) => void
 
   // 뉴스 참고 드로어
   isNewsDrawerOpen: boolean
@@ -188,7 +202,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   currentWeeklyRule: null,
   usedWeeklyRuleIds: [],
   isNewsDrawerOpen: false,
+  marketConditions: {},
+  autoTradeRules: [],
 
+  addAutoTradeRule: (rule) => set(s => ({
+    autoTradeRules: [...s.autoTradeRules.filter(r => r.id !== rule.id), rule]
+  })),
+  removeAutoTradeRule: (id) => set(s => ({
+    autoTradeRules: s.autoTradeRules.filter(r => r.id !== id)
+  })),
   toggleNewsDrawer: () => set(s => ({ isNewsDrawerOpen: !s.isNewsDrawerOpen })),
 
   startNewRun: (runNumber = 1) => {
@@ -254,6 +276,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       equippedCursedItems: [],
       currentWeeklyRule: null,
       usedWeeklyRuleIds: [],
+      marketConditions: detectSectorConditions(market),
+      autoTradeRules: [],
     })
   },
 
@@ -312,7 +336,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const price = market.prices[stockId]
     if (!price) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
-    const newPortfolio = buyStock(portfolio, stockId, price, amount)
+    const feeReduction = unlockedSkills.includes('forex_hedge') ? 0.003 : 0
+    const newPortfolio = buyStock(portfolio, stockId, price, amount, feeReduction)
     set({
       portfolio: newPortfolio,
       tradesThisTurn: tradesThisTurn + 1,
@@ -332,7 +357,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const price = market.prices[stockId]
     if (!price) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
-    const newPortfolio = sellStock(portfolio, stockId, price, shares)
+    const feeReduction = unlockedSkills.includes('forex_hedge') ? 0.003 : 0
+    const newPortfolio = sellStock(portfolio, stockId, price, shares, feeReduction)
     set({
       portfolio: newPortfolio,
       tradesThisTurn: tradesThisTurn + 1,
@@ -384,6 +410,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     const adjustedDanger = hasCursedVolatility ? Math.min(1.0, dangerLevel * 1.5) : dangerLevel
 
     updatedMarket = { ...updatedMarket, dangerLevel: adjustedDanger }
+
+    // 공포 방어막: 패닉 레벨 무효화
+    const { activeEffects: currentActiveEffects } = get()
+    if (currentActiveEffects.includes('nullify_panic')) {
+      updatedMarket = { ...updatedMarket, panicLevel: 0 }
+    }
 
     const simResult = simulateTurn(updatedMarket, runConfig, turn, currentWeeklyRule)
     const newMarket = simResult.state
@@ -478,6 +510,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
+    // 자동 매매 실행
+    const { autoTradeRules } = get()
+    let autoTradeResult: AutoTradeResult = { executedTrades: [], educationalNotes: [] }
+    let newAutoTradeRules = autoTradeRules
+    if (autoTradeRules.length > 0) {
+      const atResult = processAutoTrades(autoTradeRules, updatedPortfolio, newMarket.prices)
+      autoTradeResult = atResult.result
+      newAutoTradeRules = atResult.updatedRules
+      updatedPortfolio = atResult.updatedPortfolio
+    }
+
     // 평판 포인트 계산 (기본 2)
     let rpEarned = 2
     for (const pos of updatedPortfolio.positions) {
@@ -503,6 +546,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       phase: 'result',
       market: newMarket,
       portfolio: updatedPortfolio,
+      autoTradeRules: newAutoTradeRules,
       lastFeedback: feedback,
       lastInterestEarned: interestEarned,
       resultCascadeData: {
@@ -515,6 +559,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         insuranceCompensation: Math.floor(insuranceCompensation),
         rpDoubled,
         breakdowns: simResult.breakdowns,
+        autoTradeResult: autoTradeResult.executedTrades.length > 0 ? autoTradeResult : undefined,
       },
       stats: { ...stats },
     })
@@ -637,6 +682,22 @@ export const useGameStore = create<GameState>((set, get) => ({
       revealedIds = news.map(n => n.id)
     }
 
+    // 시장 상황 갱신
+    let updatedConditions = detectSectorConditions(get().market)
+
+    // 전략 주간: 섹터별 강제 분화 (2 상승, 1 횡보, 2 하락)
+    if (weeklyRule?.effect.type === 'strategy_week') {
+      const sectors = ['tech', 'energy', 'finance', 'consumer', 'healthcare']
+      const shuffled = [...sectors].sort(() => Math.random() - 0.5)
+      updatedConditions = {
+        [shuffled[0]]: 'bull_trend',
+        [shuffled[1]]: 'bull_trend',
+        [shuffled[2]]: 'range_bound',
+        [shuffled[3]]: 'bear_market',
+        [shuffled[4]]: 'bear_market',
+      }
+    }
+
     set({
       turn: newTurn,
       phase: 'news',
@@ -653,6 +714,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       visitedShopThisTurn: false,
       currentWeeklyRule: weeklyRule,
       usedWeeklyRuleIds: newUsedWeeklyRuleIds,
+      marketConditions: updatedConditions,
     })
 
     // 자동 저장
@@ -885,6 +947,29 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
         break
       }
+
+      case 'auto_dca_3_turns': {
+        // 선택된 종목에 3턴 자동 매수 룰 등록
+        const { selectedStockId, autoTradeRules: currentAutoRules } = get()
+        if (selectedStockId) {
+          const newRule: AutoTradeRule = {
+            id: `auto_dca_${Date.now()}`,
+            type: 'dca',
+            stockId: selectedStockId,
+            params: { dcaAmount: 500, remainingTurns: 3 },
+          }
+          updates.autoTradeRules = [...currentAutoRules, newRule]
+        }
+        break
+      }
+
+      case 'reveal_market_condition':
+        updates.activeEffects = [...activeEffects, 'reveal_market_condition']
+        break
+
+      case 'nullify_panic':
+        updates.activeEffects = [...activeEffects, 'nullify_panic']
+        break
 
       case 'predict_5_turns':
       case 'predict_3_turns': {

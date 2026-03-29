@@ -28,6 +28,9 @@ import { SECTOR_COLORS } from '../../data/constants'
 import { MarketMoodIndicator } from '../ui/MarketMoodIndicator'
 import { ActiveEffectsChip } from '../ui/ActiveEffectsChip'
 import { SectorHealthStrip } from '../ui/SectorHealthStrip'
+import { MarketConditionBadge } from '../ui/MarketConditionBadge'
+import { MarketConditionModal } from '../ui/MarketConditionModal'
+import { detectStockCondition } from '../../engine/marketCondition'
 import { SFX, bgm } from '../../utils/sound'
 
 const INITIAL_CASH = 10000
@@ -45,6 +48,8 @@ export function GameScreen() {
     lastFeedback, resultCascadeData,
     isNewsDrawerOpen, toggleNewsDrawer,
     currentWeeklyRule, equippedCursedItems, tradesThisTurn,
+    autoTradeRules, addAutoTradeRule, removeAutoTradeRule,
+    activeEffects, marketConditions,
   } = useGameStore()
 
   // BGM
@@ -52,6 +57,14 @@ export function GameScreen() {
 
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const [chartSize, setChartSize] = useState({ w: 500, h: 280 })
+  const [showMarketModal, setShowMarketModal] = useState(false)
+
+  // 시장 상황 리포트 아이템 사용 시 자동 표시
+  useEffect(() => {
+    if (activeEffects.includes('reveal_market_condition')) {
+      setShowMarketModal(true)
+    }
+  }, [activeEffects])
   const portfolioValue = useMemo(() => getPortfolioValue(portfolio, market.prices), [portfolio, market.prices])
   const totalReturn = useMemo(() => getTotalReturn(portfolio, market.prices, INITIAL_CASH), [portfolio, market.prices])
   const selectedStock = useMemo(() => selectedStockId ? STOCKS.find(s => s.id === selectedStockId) ?? null : null, [selectedStockId])
@@ -68,6 +81,12 @@ export function GameScreen() {
     const prev = hist.prices[hist.prices.length - 2]
     return prev > 0 ? (currentPrice - prev) / prev : 0
   }, [selectedStockId, market.priceHistories, currentPrice])
+
+  // 선택 종목의 시장 상황 감지 (technical_analysis 스킬 필요)
+  const selectedStockCondition = useMemo(() => {
+    if (!selectedStockId || !unlockedSkills.includes('technical_analysis')) return 'neutral' as const
+    return detectStockCondition(selectedStockId, market)
+  }, [selectedStockId, market, unlockedSkills])
 
   // 차트 이벤트 마커 (effectHistory → 선택 종목 섹터 관련만 필터)
   const chartMarkers: ChartMarker[] = useMemo(() => {
@@ -179,6 +198,11 @@ export function GameScreen() {
           </div>
         )}
       </div>
+      {selectedStockCondition !== 'neutral' && (
+        <div style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <MarketConditionBadge condition={selectedStockCondition} />
+        </div>
+      )}
     </BalPanel>
   )
 
@@ -309,6 +333,11 @@ export function GameScreen() {
                     sellDisabled={isNoSelling}
                     tradesRemaining={(unlockedSkills.includes('double_trade') ? 2 : 1) - tradesThisTurn}
                     tradeLimit={unlockedSkills.includes('double_trade') ? 2 : 1}
+                    unlockedSkills={unlockedSkills}
+                    stockCondition={selectedStockCondition}
+                    autoTradeRules={autoTradeRules}
+                    onAddAutoTradeRule={addAutoTradeRule}
+                    onRemoveAutoTradeRule={removeAutoTradeRule}
                   />
                 </div>
 
@@ -383,6 +412,13 @@ export function GameScreen() {
       <SpotlightTutorial />
 
       <AnimatePresence>{currentSpecialEvent && <SpecialEventOverlay />}</AnimatePresence>
+
+      {showMarketModal && (
+        <MarketConditionModal
+          conditions={marketConditions}
+          onClose={() => setShowMarketModal(false)}
+        />
+      )}
     </div>
   )
 }
