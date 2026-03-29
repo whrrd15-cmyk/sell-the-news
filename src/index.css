@@ -1436,6 +1436,84 @@ body {
   background: rgba(255,255,255,0.06);
 }
 
+/* 실시간 뉴스 피드 */
+.news-feed-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.news-feed-unread-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #5b9bd5;
+  background: rgba(91,155,213,0.08);
+  border-bottom: 1px solid rgba(91,155,213,0.15);
+  flex-shrink: 0;
+}
+.news-feed-unread-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #5b9bd5;
+  animation: pulse 1.5s infinite;
+}
+.news-feed-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: background 0.12s, opacity 0.5s;
+  position: relative;
+}
+.news-feed-item:hover {
+  background: rgba(255,255,255,0.04);
+}
+.news-feed-new-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 7px;
+  font-weight: 800;
+  color: #5ec269;
+  background: rgba(94,194,105,0.15);
+  padding: 1px 4px;
+  border-radius: 2px;
+  animation: pulse 2s infinite;
+}
+.news-feed-old-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 7px;
+  font-weight: 700;
+  color: #666;
+  padding: 1px 4px;
+}
+.news-feed-source {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.06);
+  color: var(--color-bal-text-dim);
+}
+.news-feed-category {
+  font-size: 9px;
+  color: var(--color-bal-text-dim);
+}
+.news-feed-headline {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-bal-text);
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
 /* 인과관계 다이어그램 */
 .causality-chain {
   padding: 8px 10px;

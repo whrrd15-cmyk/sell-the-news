@@ -152,3 +152,213 @@ export function awardReputation(
     reputationPoints: portfolio.reputationPoints + points,
   }
 }
+
+// ═══════════════════════════════════════════
+// 공매도 시스템
+// ═══════════════════════════════════════════
+
+import type { ShortPosition, LeveragedPosition, LimitOrder } from '../data/types'
+
+/**
+ * 공매도 오픈: 주식을 빌려서 매도
+ * 교육 포인트: "공매도는 주가 하락에 베팅하는 것이다.
+ * 빌린 주식을 팔고, 나중에 싸게 사서 돌려주면 차익을 얻는다."
+ */
+export function openShort(
+  cash: number,
+  stockId: string,
+  shares: number,
+  price: number,
+): { newCash: number; position: ShortPosition } | null {
+  const proceeds = shares * price * 0.995 // 0.5% 수수료
+  const marginRequired = shares * price * 1.5 // 150% 마진
+  if (cash < marginRequired - proceeds) return null // 마진 부족
+
+  return {
+    newCash: Math.round((cash + proceeds) * 100) / 100,
+    position: {
+      id: `short_${stockId}_${Date.now()}`,
+      stockId,
+      shares,
+      entryPrice: price,
+      borrowFeeRate: 0.0002, // 일 0.02%
+      accruedFees: 0,
+    },
+  }
+}
+
+/**
+ * 공매도 커버: 주식을 사서 반환
+ */
+export function coverShort(
+  cash: number,
+  position: ShortPosition,
+  currentPrice: number,
+  sharesToCover: number,
+): { newCash: number; remaining: ShortPosition | null } | null {
+  const actual = Math.min(sharesToCover, position.shares)
+  const cost = actual * currentPrice * 1.005 // 0.5% 수수료
+  if (cash < cost) return null
+
+  const remaining = actual >= position.shares ? null : {
+    ...position,
+    shares: position.shares - actual,
+  }
+
+  return {
+    newCash: Math.round((cash - cost) * 100) / 100,
+    remaining,
+  }
+}
+
+/**
+ * 공매도 일일 대여료 차감
+ */
+export function accrueShortFees(
+  positions: ShortPosition[],
+  prices: Record<string, number>,
+): { updated: ShortPosition[]; totalFees: number } {
+  let totalFees = 0
+  const updated = positions.map(pos => {
+    const currentValue = pos.shares * (prices[pos.stockId] ?? pos.entryPrice)
+    const dailyFee = currentValue * pos.borrowFeeRate
+    totalFees += dailyFee
+    return { ...pos, accruedFees: pos.accruedFees + dailyFee }
+  })
+  return { updated, totalFees }
+}
+
+/**
+ * 공매도 마진콜 체크
+ * 마진 비율이 130% 이하로 떨어지면 강제 청산 대상
+ */
+export function checkShortMarginCall(
+  position: ShortPosition,
+  currentPrice: number,
+): boolean {
+  // 마진 비율 = (cash from entry + remaining margin) / current position value
+  // 단순화: 주가가 진입가 대비 30% 이상 상승하면 마진콜
+  return currentPrice >= position.entryPrice * 1.3
+}
+
+// ═══════════════════════════════════════════
+// 레버리지 시스템
+// ═══════════════════════════════════════════
+
+/**
+ * 레버리지 매수
+ * 교육 포인트: "레버리지는 양날의 검이다.
+ * 수익도 N배지만 손실도 N배. 청산가에 도달하면 모든 투자금을 잃는다."
+ */
+export function buyWithLeverage(
+  cash: number,
+  stockId: string,
+  amount: number,
+  price: number,
+  leverage: 2 | 5 | 10,
+): { newCash: number; position: LeveragedPosition } | null {
+  const ownCapital = amount
+  const borrowedAmount = amount * (leverage - 1)
+  const totalBuyPower = amount * leverage
+  const shares = Math.floor(totalBuyPower / price)
+  if (shares <= 0 || cash < ownCapital) return null
+
+  const fee = totalBuyPower * 0.005
+  const interestRate = leverage === 2 ? 0.0001 : leverage === 5 ? 0.0002 : 0.0005
+
+  // 청산가: 자기자본이 0이 되는 가격
+  // (entry - liquidation) * shares = ownCapital → liquidation = entry - ownCapital/shares
+  const liquidationPrice = Math.max(0, price - (ownCapital - fee) / shares)
+
+  return {
+    newCash: Math.round((cash - ownCapital - fee) * 100) / 100,
+    position: {
+      id: `lev_${stockId}_${Date.now()}`,
+      stockId,
+      shares,
+      avgBuyPrice: price,
+      leverage,
+      borrowedAmount,
+      dailyInterestRate: interestRate,
+      accruedInterest: 0,
+      liquidationPrice: Math.round(liquidationPrice * 100) / 100,
+    },
+  }
+}
+
+/**
+ * 레버리지 포지션 청산
+ */
+export function closeLeveragedPosition(
+  cash: number,
+  position: LeveragedPosition,
+  currentPrice: number,
+): number {
+  const saleProceeds = position.shares * currentPrice * 0.995
+  const debt = position.borrowedAmount + position.accruedInterest
+  const netProceeds = saleProceeds - debt
+  return Math.round((cash + netProceeds) * 100) / 100
+}
+
+/**
+ * 레버리지 일일 이자
+ */
+export function accrueLeverageInterest(
+  positions: LeveragedPosition[],
+): { updated: LeveragedPosition[]; totalInterest: number } {
+  let totalInterest = 0
+  const updated = positions.map(pos => {
+    const dailyInterest = pos.borrowedAmount * pos.dailyInterestRate
+    totalInterest += dailyInterest
+    return { ...pos, accruedInterest: pos.accruedInterest + dailyInterest }
+  })
+  return { updated, totalInterest }
+}
+
+/**
+ * 레버리지 청산가 도달 체크
+ */
+export function checkLiquidation(
+  position: LeveragedPosition,
+  currentPrice: number,
+): boolean {
+  return currentPrice <= position.liquidationPrice
+}
+
+// ═══════════════════════════════════════════
+// 지정가 주문 시스템
+// ═══════════════════════════════════════════
+
+/**
+ * 지정가 주문 체결 체크
+ * 교육 포인트: "지정가 주문은 감정을 배제하고 계획대로 매매하는 도구다.
+ * 미리 정한 가격에 자동으로 실행되므로 충동적 판단을 방지한다."
+ */
+export function checkOrderFill(
+  order: LimitOrder,
+  currentPrice: number,
+): boolean {
+  switch (order.type) {
+    case 'buy_limit':
+      return currentPrice <= order.targetPrice
+    case 'sell_limit':
+      return currentPrice >= order.targetPrice
+    case 'stop_loss':
+      return currentPrice <= order.targetPrice
+    case 'take_profit':
+      return currentPrice >= order.targetPrice
+  }
+}
+
+/**
+ * 호가 스프레드 계산
+ * 교육 포인트: "실제 시장에서는 매수가와 매도가가 다르다.
+ * 이 차이(스프레드)가 거래 비용의 일부다."
+ */
+export function getSpread(basePrice: number, volatility: number): { bid: number; ask: number } {
+  const spreadRate = 0.001 + volatility * 0.002 // 0.1% ~ 0.3%
+  return {
+    bid: Math.round(basePrice * (1 - spreadRate) * 100) / 100,
+    ask: Math.round(basePrice * (1 + spreadRate) * 100) / 100,
+  }
+}

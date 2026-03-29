@@ -17,6 +17,42 @@ export interface MarketSession {
   afterHours: boolean   // 애프터 (16:00-17:00)
 }
 
+// ============ 공매도/레버리지/지정가 ============
+
+export interface ShortPosition {
+  id: string
+  stockId: string
+  shares: number
+  entryPrice: number
+  borrowFeeRate: number    // 일일 대여료율 (기본 0.0002 = 0.02%)
+  accruedFees: number
+}
+
+export interface LeveragedPosition {
+  id: string
+  stockId: string
+  shares: number
+  avgBuyPrice: number
+  leverage: 2 | 5 | 10
+  borrowedAmount: number
+  dailyInterestRate: number // 2x: 0.0001, 5x: 0.0002, 10x: 0.0005
+  accruedInterest: number
+  liquidationPrice: number
+}
+
+export type OrderType = 'buy_limit' | 'sell_limit' | 'stop_loss' | 'take_profit'
+export type TimeInForce = 'day' | 'week' | 'gtc'
+
+export interface LimitOrder {
+  id: string
+  stockId: string
+  type: OrderType
+  targetPrice: number
+  shares: number
+  timeInForce: TimeInForce
+  createdAt: number        // tickCount at creation
+}
+
 // ============ 시장 상황 ============
 
 export type MarketCondition = 'bull_trend' | 'range_bound' | 'bear_market' | 'neutral'

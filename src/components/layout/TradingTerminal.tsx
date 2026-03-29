@@ -6,7 +6,9 @@ import { STOCKS } from '../../data/stocks'
 import { getPortfolioValue, getTotalReturn } from '../../engine/portfolio'
 import CandlestickChart from '../charts/CandlestickChart'
 import { BalPanel } from '../ui/BalPanel'
-import { TradePanel } from '../trade/TradePanel'
+import { TradingPanel } from '../trade/TradingPanel'
+import type { ShortPosition, LeveragedPosition, LimitOrder } from '../../data/types'
+import { openShort, coverShort, buyWithLeverage, closeLeveragedPosition, checkOrderFill } from '../../engine/portfolio'
 import { StockCardStrip } from '../stocks/StockCardStrip'
 import { PortfolioOverview } from '../ui/PortfolioOverview'
 import { MarketPulseBar } from '../ui/MarketPulseBar'
@@ -15,8 +17,9 @@ import { BalatroBackground } from '../effects/BalatroBackground'
 import type { BackgroundMood } from '../effects/BalatroBackground'
 import { BalChip } from '../ui/BalChip'
 import { BreakingNewsBanner } from '../effects/BreakingNewsBanner'
-import { NewsPanel } from '../news/NewsPanel'
+import { NewsFeedPanel } from '../news/NewsFeedPanel'
 import { SectorImpactSummary } from '../news/SectorImpactSummary'
+import { useNewsStore } from '../../stores/newsStore'
 import { InventoryDropdown } from '../ui/InventoryDropdown'
 import { ShopIcon } from '../icons/SkillIcons'
 import { SpecialEventOverlay } from './SpecialEventOverlay'
@@ -53,6 +56,13 @@ export function TradingTerminal() {
   const handleClockEvents = useMarketStore(s => s.handleClockEvents)
   const initializeMarket = useMarketStore(s => s.initialize)
 
+  const dripNews = useNewsStore(s => s.publishedNews)
+  const newsFreshness = useNewsStore(s => s.freshness)
+  const newsUnreadCount = useNewsStore(s => s.unreadCount)
+  const newsMarkRead = useNewsStore(s => s.markAsRead)
+  const newsHandleClock = useNewsStore(s => s.handleClockEvents)
+  const generateWeekPool = useNewsStore(s => s.generateWeekPool)
+
   const {
     portfolio, runConfig, selectedStockId, selectStock,
     unlockedSkills, currentNews, currentSpecialEvent,
@@ -68,9 +78,10 @@ export function TradingTerminal() {
   useEffect(() => {
     if (!initialized.current && runConfig) {
       initializeMarket(runConfig)
+      generateWeekPool(1, runConfig, null)
       initialized.current = true
     }
-  }, [runConfig, initializeMarket])
+  }, [runConfig, initializeMarket, generateWeekPool])
 
   // ═══ BGM ═══
   useEffect(() => { bgm.crossFadeTo('game-main') }, [])
@@ -84,12 +95,24 @@ export function TradingTerminal() {
     return () => { if (clockRef.current) clearInterval(clockRef.current) }
   }, [timeTick])
 
-  // ═══ 시계 이벤트 → 시장 업데이트 연결 ═══
+  // ═══ 시계 이벤트 → 시장 + 뉴스 업데이트 연결 ═══
   useEffect(() => {
     return timeSubscribe((events: ClockEvent[]) => {
-      handleClockEvents(events, useTimeStore.getState().gameTime.tickCount)
+      const gt = useTimeStore.getState().gameTime
+      handleClockEvents(events, gt.tickCount)
+      newsHandleClock(events, gt)
+
+      // 주 시작 시 뉴스 풀 생성
+      for (const e of events) {
+        if (e.type === 'WEEK_END' || e.type === 'MARKET_OPEN') {
+          const config = useGameStore.getState().runConfig
+          if (config) {
+            generateWeekPool(gt.week, config, useMarketStore.getState().currentWeeklyRule)
+          }
+        }
+      }
     })
-  }, [timeSubscribe, handleClockEvents])
+  }, [timeSubscribe, handleClockEvents, newsHandleClock, generateWeekPool])
 
   // ═══ 시장 데이터 (실시간 또는 기존 gameStore fallback) ═══
   const legacyMarket = useGameStore(s => s.market)
@@ -154,6 +177,67 @@ export function TradingTerminal() {
 
   // ═══ 모달 ═══
   const [showMarketModal, setShowMarketModal] = useState(false)
+
+  // ═══ 공매도/레버리지/주문 상태 ═══
+  const [shortPositions, setShortPositions] = useState<ShortPosition[]>([])
+  const [leveragedPositions, setLeveragedPositions] = useState<LeveragedPosition[]>([])
+  const [activeOrders, setActiveOrders] = useState<LimitOrder[]>([])
+
+  const handleOpenShort = useCallback((stockId: string, shares: number, price: number) => {
+    const result = openShort(portfolio.cash, stockId, shares, price)
+    if (!result) return
+    useGameStore.setState(s => ({ portfolio: { ...s.portfolio, cash: result.newCash } }))
+    setShortPositions(prev => [...prev, result.position])
+    SFX.sell()
+  }, [portfolio.cash])
+
+  const handleCoverShort = useCallback((positionId: string, shares: number, price: number) => {
+    const pos = shortPositions.find(p => p.id === positionId)
+    if (!pos) return
+    const result = coverShort(portfolio.cash, pos, price, shares)
+    if (!result) return
+    useGameStore.setState(s => ({ portfolio: { ...s.portfolio, cash: result.newCash } }))
+    setShortPositions(prev => result.remaining
+      ? prev.map(p => p.id === positionId ? result.remaining! : p)
+      : prev.filter(p => p.id !== positionId)
+    )
+    SFX.buy()
+  }, [portfolio.cash, shortPositions])
+
+  const handleBuyLeverage = useCallback((stockId: string, amount: number, leverage: 2 | 5 | 10) => {
+    const result = buyWithLeverage(portfolio.cash, stockId, amount, market?.prices[stockId] ?? 0, leverage)
+    if (!result) return
+    useGameStore.setState(s => ({ portfolio: { ...s.portfolio, cash: result.newCash } }))
+    setLeveragedPositions(prev => [...prev, result.position])
+    SFX.buy()
+  }, [portfolio.cash, market?.prices])
+
+  const handleCloseLeverage = useCallback((positionId: string) => {
+    const pos = leveragedPositions.find(p => p.id === positionId)
+    if (!pos || !market) return
+    const newCash = closeLeveragedPosition(portfolio.cash, pos, market.prices[pos.stockId] ?? 0)
+    useGameStore.setState(s => ({ portfolio: { ...s.portfolio, cash: newCash } }))
+    setLeveragedPositions(prev => prev.filter(p => p.id !== positionId))
+    SFX.sell()
+  }, [portfolio.cash, leveragedPositions, market?.prices])
+
+  const handleCreateOrder = useCallback((order: Omit<LimitOrder, 'id' | 'createdAt'>) => {
+    const newOrder: LimitOrder = {
+      ...order,
+      id: `order_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      createdAt: gameTime.tickCount,
+    }
+    setActiveOrders(prev => [...prev, newOrder])
+    SFX.click()
+  }, [gameTime.tickCount])
+
+  const handleCancelOrder = useCallback((orderId: string) => {
+    setActiveOrders(prev => prev.filter(o => o.id !== orderId))
+  }, [])
+
+  // 최대 레버리지 (스킬 기반)
+  const maxLeverage: 2 | 5 | 10 = unlockedSkills.includes('leverage_extreme') ? 10
+    : unlockedSkills.includes('leverage_pro') ? 5 : 2
 
   // ═══ 매매 핸들러 ═══
   const handleBuy = useCallback((stockId: string, amount: number) => {
@@ -247,8 +331,14 @@ export function TradingTerminal() {
 
         {/* ═══ 뉴스 피드 (왼쪽) ═══ */}
         <div className="trading-news" style={{ gridArea: 'news' }}>
-          <BalPanel label="뉴스 피드" className="flex flex-col h-full overflow-hidden">
-            <NewsPanel news={currentNews} unlockedSkills={unlockedSkills} />
+          <BalPanel label={`뉴스 피드${newsUnreadCount > 0 ? ` (${newsUnreadCount})` : ''}`} className="flex flex-col h-full overflow-hidden">
+            <NewsFeedPanel
+              news={dripNews.length > 0 ? dripNews : currentNews}
+              freshness={newsFreshness}
+              unreadCount={newsUnreadCount}
+              onMarkRead={newsMarkRead}
+              unlockedSkills={unlockedSkills}
+            />
           </BalPanel>
         </div>
 
@@ -282,30 +372,39 @@ export function TradingTerminal() {
 
         {/* ═══ 매매 패널 (오른쪽) ═══ */}
         <div className="trading-trade" style={{ gridArea: 'trading' }}>
-          <TradePanel
-            stock={selectedStock}
-            currentPrice={currentPrice}
-            priceChange={priceChange}
-            portfolio={portfolio}
-            position={selectedPosition}
-            phase="investment"
-            onBuy={handleBuy}
-            onSell={handleSell}
-            tradesRemaining={99}
-            tradeLimit={99}
-            unlockedSkills={unlockedSkills}
-            stockCondition={selectedStockCondition}
-            autoTradeRules={autoTradeRules}
-            onAddAutoTradeRule={addAutoTradeRule}
-            onRemoveAutoTradeRule={removeAutoTradeRule}
-          />
+          <BalPanel label="매매" className="flex flex-col h-full overflow-hidden">
+            <TradingPanel
+              stock={selectedStock}
+              currentPrice={currentPrice}
+              priceChange={priceChange}
+              portfolio={portfolio}
+              position={selectedPosition}
+              onBuy={handleBuy}
+              onSell={handleSell}
+              shortPositions={shortPositions}
+              onOpenShort={handleOpenShort}
+              onCoverShort={handleCoverShort}
+              leveragedPositions={leveragedPositions}
+              onBuyLeverage={handleBuyLeverage}
+              onCloseLeverage={handleCloseLeverage}
+              maxLeverage={maxLeverage}
+              activeOrders={activeOrders}
+              onCreateOrder={handleCreateOrder}
+              onCancelOrder={handleCancelOrder}
+              unlockedSkills={unlockedSkills}
+              stockCondition={selectedStockCondition}
+              autoTradeRules={autoTradeRules}
+              onAddAutoTradeRule={addAutoTradeRule}
+              onRemoveAutoTradeRule={removeAutoTradeRule}
+            />
+          </BalPanel>
         </div>
 
         {/* ═══ 하단: 여론 + 종목 카드 ═══ */}
         <div className="trading-bottom" style={{ gridArea: 'bottom' }}>
           <div className="trading-bottom-inner">
             {/* 섹터 임팩트 */}
-            <SectorImpactSummary news={currentNews} />
+            <SectorImpactSummary news={dripNews.length > 0 ? dripNews : currentNews} />
             {/* 종목 카드 스트립 */}
             <StockCardStrip
               stocks={STOCKS}
