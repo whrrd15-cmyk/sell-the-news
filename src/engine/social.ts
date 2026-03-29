@@ -19,30 +19,30 @@ export interface SocialPost {
 }
 
 const BULLISH_AUTHORS = [
-  { name: '@수익왕', avatar: '🤑' },
-  { name: '@주식천재', avatar: '🧠' },
-  { name: '@강남트레이더', avatar: '💎' },
-  { name: '@10배수익', avatar: '🚀' },
+  { name: '@수익왕', avatar: '#5ec269' },
+  { name: '@주식천재', avatar: '#5ec269' },
+  { name: '@강남트레이더', avatar: '#5ec269' },
+  { name: '@10배수익', avatar: '#5ec269' },
 ]
 
 const BEARISH_AUTHORS = [
-  { name: '@신중파', avatar: '🛡️' },
-  { name: '@리스크관리', avatar: '⚠️' },
-  { name: '@현실주의자', avatar: '📉' },
-  { name: '@가치투자', avatar: '🔍' },
+  { name: '@신중파', avatar: '#e8534a' },
+  { name: '@리스크관리', avatar: '#e8534a' },
+  { name: '@현실주의자', avatar: '#e8534a' },
+  { name: '@가치투자', avatar: '#e8534a' },
 ]
 
 const NEUTRAL_AUTHORS = [
-  { name: '@경제박사', avatar: '📊' },
-  { name: '@시장관찰자', avatar: '👀' },
-  { name: '@개미투자자', avatar: '🐜' },
-  { name: '@주린이', avatar: '🌱' },
+  { name: '@경제박사', avatar: '#5b9bd5' },
+  { name: '@시장관찰자', avatar: '#5b9bd5' },
+  { name: '@개미투자자', avatar: '#8888aa' },
+  { name: '@주린이', avatar: '#8888aa' },
 ]
 
 const RUMORERS = [
-  { name: '@찌라시봇', avatar: '🤖' },
-  { name: '@내부자X', avatar: '🕵️' },
-  { name: '@대박정보', avatar: '💰' },
+  { name: '@찌라시봇', avatar: '#e88c3a' },
+  { name: '@내부자X', avatar: '#e88c3a' },
+  { name: '@대박정보', avatar: '#e88c3a' },
 ]
 
 // 감정별 게시글 풀 (직접적 시장 용어 회피)
