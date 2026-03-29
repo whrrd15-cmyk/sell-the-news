@@ -29,6 +29,7 @@ import { SpecialEventOverlay } from './SpecialEventOverlay'
 import { SECTOR_COLORS } from '../../data/constants'
 import { detectStockCondition } from '../../engine/marketCondition'
 import { formatGameTime, getQuarterProgress, getMarketSession } from '../../engine/clock'
+import { NewsToast } from '../ui/NewsToast'
 import { SFX, bgm } from '../../utils/sound'
 import type { ClockEvent } from '../../engine/clock'
 
@@ -181,6 +182,19 @@ export function TradingTerminal() {
   // ═══ 모달 ═══
   const [showMarketModal, setShowMarketModal] = useState(false)
   const [activePage, setActivePage] = useState<PageId>('trading')
+  const [toastNews, setToastNews] = useState<import('../../data/types').NewsCard | null>(null)
+
+  // 새 임팩트 뉴스 도착 시 토스트
+  const prevNewsCount = useRef(0)
+  useEffect(() => {
+    if (dripNews.length > prevNewsCount.current && prevNewsCount.current > 0) {
+      const newest = dripNews[0]
+      if (newest && !newest.isNoise && activePage === 'trading') {
+        setToastNews(newest)
+      }
+    }
+    prevNewsCount.current = dripNews.length
+  }, [dripNews.length, activePage])
 
   // ═══ 공매도/레버리지/주문 상태 ═══
   const [shortPositions, setShortPositions] = useState<ShortPosition[]>([])
@@ -390,7 +404,19 @@ export function TradingTerminal() {
 
             {activePage === 'news' && (
               /* ════ 뉴스 페이지: 상세 읽기 + 인과관계 ════ */
-              <NewsPage news={allNews} freshness={newsFreshness} unlockedSkills={unlockedSkills} />
+              <NewsPage
+                news={allNews}
+                freshness={newsFreshness}
+                unlockedSkills={unlockedSkills}
+                onNavigateToTrading={(sectorFilter) => {
+                  setActivePage('trading')
+                  // 섹터 필터가 있으면 해당 섹터 첫 종목 선택
+                  if (sectorFilter) {
+                    const sectorStock = STOCKS.find(s => s.sector === sectorFilter && !s.isETF)
+                    if (sectorStock) selectStock(sectorStock.id)
+                  }
+                }}
+              />
             )}
 
             {activePage === 'analysis' && (
@@ -406,6 +432,13 @@ export function TradingTerminal() {
             )}
           </div>
         </div>
+
+        {/* ═══ 뉴스 토스트 알림 ═══ */}
+        <NewsToast
+          news={toastNews}
+          onRead={(id) => { setToastNews(null); setActivePage('news'); }}
+          onDismiss={() => setToastNews(null)}
+        />
 
         {/* ═══ 전역 오버레이 ═══ */}
         <BreakingNewsBanner />
