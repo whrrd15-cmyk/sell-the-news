@@ -2077,7 +2077,7 @@ body {
   position: fixed; z-index: 83; pointer-events: none;
 }
 .guide-character-img {
-  width: 96px; height: 96px; image-rendering: pixelated;
+  width: 128px; height: 128px; image-rendering: pixelated;
   filter: drop-shadow(0 0 10px rgba(240,180,41,0.4));
 }
 
@@ -3315,8 +3315,8 @@ body {
   margin-bottom: 16px;
 }
 .onboarding-character-img {
-  width: 144px;
-  height: 144px;
+  width: 192px;
+  height: 192px;
   image-rendering: pixelated;
   filter: drop-shadow(0 0 12px rgba(240,180,41,0.3));
   animation: character-bob 2s ease-in-out infinite;

@@ -308,8 +308,8 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         <motion.div
           className="guide-character"
           animate={{
-            left: targetRect!.left - 70,
-            top: targetRect!.top + targetRect!.height / 2 - 40,
+            left: targetRect!.left - 100,
+            top: targetRect!.top + targetRect!.height / 2 - 64,
           }}
           transition={{ type: 'spring', stiffness: 120, damping: 18 }}
         >
