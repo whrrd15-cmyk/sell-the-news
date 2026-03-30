@@ -166,19 +166,8 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   const totalSteps = CHAPTERS.reduce((s, c) => s + c.steps.length, 0)
   const currentGlobalStep = CHAPTERS.slice(0, chapterIndex).reduce((s, c) => s + c.steps.length, 0) + stepIndex + 1
 
-  // 캐릭터: 가리키는 포즈 1프레임 고정 + idle 바운스로 생동감
-  // 타겟이 위에 있으면 point-up, 오른쪽이면 point-right, 없으면 idle
-  const getCharacterImg = useCallback((): string => {
-    if (!targetRect) return '/characters/mentor-hd/animations/breathing-idle/south/frame_000.png'
-    // 타겟이 캐릭터보다 위에 있으면 위를, 아니면 오른쪽을 가리킴
-    const isTopTarget = targetRect.top < 80
-    const charTop = isTopTarget ? targetRect.bottom + 10 : Math.max(10, targetRect.top)
-    const tCY = targetRect.top + targetRect.height / 2
-    if (tCY < charTop) return '/characters/mentor-hd/animations/point-up/south/frame_002.png'
-    return '/characters/mentor-hd/animations/point-right/south/frame_002.png'
-  }, [targetRect])
-
-  const characterImg = getCharacterImg()
+  // 캐릭터: 항상 point-right 포즈 (우하단 고정이므로 왼쪽을 가리킴)
+  const characterImg = '/characters/mentor-hd/animations/breathing-idle/east/frame_000.png'
 
 
   // 페이지 네비게이트
@@ -312,99 +301,42 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         }} />
       )}
 
-      {/* 픽셀아트 화살표: 타겟 가장자리에 정확한 방향으로 배치 */}
-      {hasTarget && (() => {
-        // 캐릭터 위치 계산 (캐릭터 배치 로직과 동일)
-        const isTopTarget = targetRect!.top < 80
-        const charLeft = isTopTarget
-          ? Math.max(56, targetRect!.left - 136)
-          : Math.max(56, targetRect!.left - 136)
-        const charTop = isTopTarget
-          ? targetRect!.bottom + 10
-          : Math.max(10, Math.min(targetRect!.top, window.innerHeight - 150))
-        const charCX = charLeft + 64
-        const charCY = charTop + 64
+      {/* 화살표: 타겟 아래 중앙에 단순 배치 */}
+      {hasTarget && (
+        <motion.img
+          src="/characters/arrow-down.png"
+          alt=""
+          className="guide-pixel-arrow"
+          animate={{ y: [0, 8, 0] }}
+          transition={{ duration: 0.7, repeat: Infinity }}
+          style={{
+            left: targetRect!.left + targetRect!.width / 2 - 20,
+            top: targetRect!.bottom + 6,
+          }}
+        />
+      )}
 
-        // 타겟 중심
-        const tCX = targetRect!.left + targetRect!.width / 2
-        const tCY = targetRect!.top + targetRect!.height / 2
-
-        // 캐릭터→타겟 각도
-        const angle = Math.atan2(tCY - charCY, tCX - charCX) * (180 / Math.PI)
-
-        // 화살표를 타겟 가장자리에 배치 (타겟 쪽 끝)
-        const pad = 8
-        let arrowLeft: number, arrowTop: number
-        if (Math.abs(angle) < 45) {
-          // 오른쪽
-          arrowLeft = targetRect!.left - 48 - pad
-          arrowTop = tCY - 24
-        } else if (angle >= 45 && angle < 135) {
-          // 아래쪽
-          arrowLeft = tCX - 24
-          arrowTop = targetRect!.top - 48 - pad
-        } else if (angle <= -45 && angle > -135) {
-          // 위쪽
-          arrowLeft = tCX - 24
-          arrowTop = targetRect!.bottom + pad
-        } else {
-          // 왼쪽
-          arrowLeft = targetRect!.right + pad
-          arrowTop = tCY - 24
-        }
-
-        // 화살표 이미지 + CSS 회전으로 정확한 방향
-        // arrow-right.png 기본 → rotate로 8방향 커버
-        const arrowRotate = angle // 기본 화살표가 오른쪽이므로 각도 그대로
-        const bounceAxis = Math.abs(angle) < 45 || Math.abs(angle) > 135 ? 'x' : 'y'
-        const bounceDir = (angle > -135 && angle < -45) ? -1 : (angle >= 45 && angle <= 135) ? -1 : 1
-
-        return (
-          <motion.img
-            src="/characters/arrow-right.png"
-            alt=""
-            className="guide-pixel-arrow"
-            animate={bounceAxis === 'x' ? { x: [0, 8 * bounceDir, 0] } : { y: [0, 8 * bounceDir, 0] }}
-            transition={{ duration: 0.7, repeat: Infinity }}
-            style={{
-              left: arrowLeft,
-              top: arrowTop,
-              imageRendering: 'pixelated',
-              transform: `rotate(${Math.round(angle)}deg)`,
-            }}
-          />
-        )
-      })()}
-
-      {/* 캐릭터: 하이라이트 칸 왼쪽에 배치 */}
+      {/* 캐릭터: 화면 우하단 고정 */}
       <motion.div
         className="guide-character"
-        animate={hasTarget ? {
-          left: Math.max(56, targetRect!.left - 136),
-          top: targetRect!.top < 80
-            ? targetRect!.bottom + 10  // 타겟이 화면 상단이면 캐릭터를 아래에
-            : Math.max(10, Math.min(targetRect!.top, window.innerHeight - 150)),
-        } : { left: 70, top: window.innerHeight - 220 }}
-        transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+        initial={{ x: 50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        style={{ right: 20, bottom: 130 }}
       >
         <motion.img
           src={characterImg}
           alt=""
           className="guide-character-img"
-          animate={{ y: [0, -3, 0] }}
+          animate={{ y: [0, -4, 0] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         />
       </motion.div>
 
-      {/* 대화 말풍선: 하이라이트 칸 아래 또는 캐릭터 옆 */}
+      {/* 말풍선: 캐릭터 바로 위 */}
       <motion.div
         className="guide-speech-bubble"
         onClick={handleClick}
-        animate={hasTarget ? {
-          left: Math.max(60, Math.min(targetRect!.left, window.innerWidth - 340)),
-          top: Math.min(targetRect!.bottom + 20, window.innerHeight - 130),
-        } : { left: window.innerWidth / 2 - 160, top: window.innerHeight / 2 }}
-        transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+        style={{ right: 20, bottom: 260 }}
       >
         <div className="guide-speech-chapter" style={{ color: chapter.color }}>{chapter.title}</div>
         <div className="guide-speech-text">

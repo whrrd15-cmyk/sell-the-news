@@ -2074,23 +2074,23 @@ body {
 }
 /* 픽셀아트 화살표 */
 .guide-pixel-arrow {
-  position: fixed; z-index: 82; pointer-events: none;
-  width: 48px; height: 48px;
+  position: fixed; z-index: 84; pointer-events: none;
+  width: 40px; height: 40px;
   filter: drop-shadow(0 0 8px rgba(240,180,41,0.5));
 }
 
-/* 캐릭터: 화면을 돌아다니며 가리킴 */
+/* 캐릭터: 우하단 고정 */
 .guide-character {
-  position: fixed; z-index: 83; pointer-events: none;
+  position: fixed; z-index: 85; pointer-events: none;
 }
 .guide-character-img {
   width: 128px; height: 128px; image-rendering: pixelated;
   filter: drop-shadow(0 0 10px rgba(240,180,41,0.4));
 }
 
-/* 말풍선: 캐릭터 근처 */
+/* 말풍선: 캐릭터 위 */
 .guide-speech-bubble {
-  position: fixed; z-index: 83; width: 320px; cursor: pointer;
+  position: fixed; z-index: 85; width: 320px; cursor: pointer;
   background: rgba(15,15,30,0.92); border: 1px solid rgba(240,180,41,0.25);
   border-radius: 10px; padding: 10px 14px;
   backdrop-filter: blur(16px);
