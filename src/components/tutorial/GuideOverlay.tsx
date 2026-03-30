@@ -179,32 +179,20 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
             )}
           </mask>
         </defs>
-        <rect width="100%" height="100%" fill="rgba(0,0,0,0.65)" mask="url(#guide-mask)" />
+        <rect width="100%" height="100%" fill="rgba(0,0,0,0.75)" mask="url(#guide-mask)" />
       </svg>
 
-      {/* 전기 보더 + 코너 라이트 + 글로우 */}
+      {/* 골드 글로우 보더 */}
       {hasTarget && (
         <div
-          className="guide-electric-border"
+          className="guide-glow-border"
           style={{
             left: targetRect!.left - pad,
             top: targetRect!.top - pad,
             width: targetRect!.width + pad * 2,
             height: targetRect!.height + pad * 2,
           }}
-        >
-          {/* 전기 보더: conic-gradient 회전 */}
-          <div className="guide-electric-spin" />
-          {/* 내부 배경 (마스크 역할) */}
-          <div className="guide-electric-inner" />
-          {/* 코너 라이트 4개 */}
-          <div className="guide-corner guide-corner--tl" />
-          <div className="guide-corner guide-corner--tr" />
-          <div className="guide-corner guide-corner--bl" />
-          <div className="guide-corner guide-corner--br" />
-          {/* 스캔라인 */}
-          <div className="guide-scanline" />
-        </div>
+        />
       )}
 
       {/* 하단 대화 바 */}

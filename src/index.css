@@ -2057,92 +2057,19 @@ body {
   position: fixed; inset: 0; z-index: 80; pointer-events: auto; cursor: pointer;
 }
 
-/* ── ReactBits ElectricBorder 스타일 전기 보더 ── */
-@property --guide-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
-}
-
-.guide-electric-border {
+/* 심플 글로우 보더 */
+.guide-glow-border {
   position: fixed; z-index: 81; pointer-events: none; border-radius: 12px;
-  /* 강화된 글로우: 이중 레이어 */
+  border: 2px solid rgba(240,180,41,0.6);
   box-shadow:
-    0 0 48px 8px rgba(240,180,41,0.35),
-    0 0 96px 16px rgba(240,180,41,0.12),
-    inset 0 0 20px rgba(240,180,41,0.06);
-  overflow: hidden;
+    0 0 20px 4px rgba(240,180,41,0.3),
+    0 0 60px 10px rgba(240,180,41,0.1),
+    inset 0 0 15px rgba(240,180,41,0.04);
+  animation: guide-glow-pulse 2s ease-in-out infinite;
 }
-
-/* 전기 보더: conic-gradient 회전 빛 */
-.guide-electric-spin {
-  position: absolute;
-  inset: -3px;
-  border-radius: inherit;
-  background: conic-gradient(
-    from var(--guide-angle),
-    transparent 0%,
-    transparent 25%,
-    #f0b429 35%,
-    #ffe066 50%,
-    #f0b429 65%,
-    transparent 75%,
-    transparent 100%
-  );
-  animation: guide-spin 2.5s linear infinite;
-  opacity: 0.9;
-}
-
-/* 내부 마스크 (보더만 보이게) */
-.guide-electric-inner {
-  position: absolute;
-  inset: 2px;
-  border-radius: 10px;
-  background: rgba(0,0,0,0.01);
-}
-
-@keyframes guide-spin {
-  to { --guide-angle: 360deg; }
-}
-
-/* 코너 라이트 (SpotlightCard 스타일) */
-.guide-corner {
-  position: absolute; width: 8px; height: 8px; border-radius: 50%;
-  background: #ffe066;
-  box-shadow: 0 0 12px 4px rgba(255,224,102,0.6), 0 0 24px 8px rgba(240,180,41,0.3);
-  animation: guide-corner-pulse 1.5s ease-in-out infinite;
-}
-.guide-corner--tl { top: -4px; left: -4px; animation-delay: 0s; }
-.guide-corner--tr { top: -4px; right: -4px; animation-delay: 0.375s; }
-.guide-corner--br { bottom: -4px; right: -4px; animation-delay: 0.75s; }
-.guide-corner--bl { bottom: -4px; left: -4px; animation-delay: 1.125s; }
-
-@keyframes guide-corner-pulse {
-  0%, 100% { opacity: 0.4; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.4); }
-}
-
-/* 내부 스캔라인 (CRT 느낌) */
-.guide-scanline {
-  position: absolute; inset: 2px; border-radius: 10px; pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(240,180,41,0.03) 3px,
-    rgba(240,180,41,0.03) 6px
-  );
-  overflow: hidden;
-}
-.guide-scanline::after {
-  content: '';
-  position: absolute; left: 0; right: 0; height: 40%;
-  background: linear-gradient(180deg, rgba(240,180,41,0.06), transparent);
-  animation: guide-scan-move 2s linear infinite;
-}
-@keyframes guide-scan-move {
-  0% { top: -40%; }
-  100% { top: 100%; }
+@keyframes guide-glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px 4px rgba(240,180,41,0.3), 0 0 60px 10px rgba(240,180,41,0.1), inset 0 0 15px rgba(240,180,41,0.04); border-color: rgba(240,180,41,0.6); }
+  50% { box-shadow: 0 0 30px 8px rgba(240,180,41,0.45), 0 0 80px 16px rgba(240,180,41,0.15), inset 0 0 20px rgba(240,180,41,0.06); border-color: rgba(240,180,41,0.85); }
 }
 .guide-bar {
   position: fixed; bottom: 0; left: 52px; right: 0; z-index: 82;
