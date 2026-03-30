@@ -183,7 +183,7 @@ export function TradingTerminal() {
   // ═══ 모달 ═══
   const [showMarketModal, setShowMarketModal] = useState(false)
   const [activePage, setActivePage] = useState<PageId>('trading')
-  const [guideOpen, setGuideOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(true)
   const [toastNews, setToastNews] = useState<import('../../data/types').NewsCard | null>(null)
 
   // 새 임팩트 뉴스 도착 시 토스트
