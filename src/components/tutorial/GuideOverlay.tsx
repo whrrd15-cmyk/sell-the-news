@@ -166,36 +166,29 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   const totalSteps = CHAPTERS.reduce((s, c) => s + c.steps.length, 0)
   const currentGlobalStep = CHAPTERS.slice(0, chapterIndex).reduce((s, c) => s + c.steps.length, 0) + stepIndex + 1
 
-  // 캐릭터 이미지: 타겟 방향에 따라 가리키는 방향 결정
+  // 캐릭터 이미지: 타겟 방향을 바라보는 idle 애니메이션
   const [animFrame, setAnimFrame] = useState(0)
 
-  // 가리키는 애니메이션 프레임 순환
   useEffect(() => {
     if (!isOpen) return
     const interval = setInterval(() => {
-      setAnimFrame(f => (f + 1) % 6) // pushing은 6프레임
-    }, 200)
+      setAnimFrame(f => (f + 1) % 4) // breathing-idle은 4프레임
+    }, 300)
     return () => clearInterval(interval)
   }, [isOpen])
 
-  // 타겟 위치 기반 캐릭터 방향 결정
+  // 타겟이 캐릭터의 어느 쪽에 있는지 → 해당 방향을 바라봄
   const getCharacterDirection = useCallback((): string => {
     if (!targetRect) return 'south'
-    const charX = Math.max(60, Math.min(targetRect.left + targetRect.width / 2 - 64, window.innerWidth - 140))
-    const charY = Math.max(10, Math.min(targetRect.bottom + 8, window.innerHeight - 200))
+    // 캐릭터는 타겟의 왼쪽 아래에 배치됨
     const targetCenterX = targetRect.left + targetRect.width / 2
-    const targetCenterY = targetRect.top + targetRect.height / 2
-    const dx = targetCenterX - charX
-    const dy = targetCenterY - charY
-    // 타겟이 위에 있으면 north, 아래면 south, 좌우는 east/west
-    if (Math.abs(dy) > Math.abs(dx)) {
-      return dy < 0 ? 'north' : 'south'
-    }
-    return dx > 0 ? 'east' : 'west'
+    // 캐릭터가 타겟보다 왼쪽이면 east를 바라봄 (타겟을 향해)
+    // 기본적으로 east (오른쪽을 바라보며 타겟을 향함)
+    return 'east'
   }, [targetRect])
 
   const charDir = getCharacterDirection()
-  const characterImg = `/characters/mentor-hd/animations/pushing/${charDir}/frame_${String(animFrame).padStart(3, '0')}.png`
+  const characterImg = `/characters/mentor-hd/animations/breathing-idle/${charDir}/frame_${String(animFrame).padStart(3, '0')}.png`
 
   // 페이지 네비게이트
   useEffect(() => {
@@ -331,35 +324,26 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         }} />
       )}
 
-      {/* 캐릭터: 하이라이트 대상 아래에 표시 (잘림 방지) */}
-      {hasTarget && (() => {
-        const charX = Math.max(60, Math.min(targetRect!.left + targetRect!.width / 2 - 64, window.innerWidth - 140))
-        const charY = Math.max(10, Math.min(targetRect!.bottom + 8, window.innerHeight - 200))
-        return (
-          <motion.div
-            className="guide-character"
-            animate={{ left: charX, top: charY }}
-            transition={{ type: 'spring', stiffness: 120, damping: 18 }}
-          >
-            <motion.img
-              src={characterImg}
-              alt=""
-              className="guide-character-img"
-              animate={{ y: [0, -3, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
-          </motion.div>
-        )
-      })()}
+      {/* 캐릭터: 화면 하단 왼쪽에 고정 배치 */}
+      <motion.div
+        className="guide-character"
+        animate={{ left: 70, top: window.innerHeight - 220 }}
+        transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+      >
+        <motion.img
+          src={characterImg}
+          alt=""
+          className="guide-character-img"
+          animate={{ y: [0, -3, 0] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+        />
+      </motion.div>
 
-      {/* 대화 말풍선: 캐릭터 옆에 표시 (잘림 방지 클램핑) */}
+      {/* 대화 말풍선: 캐릭터 오른쪽에 배치 */}
       <motion.div
         className="guide-speech-bubble"
         onClick={handleClick}
-        animate={hasTarget ? {
-          left: Math.max(60, Math.min(targetRect!.left + targetRect!.width / 2 + 60, window.innerWidth - 340)),
-          top: Math.max(10, Math.min(targetRect!.bottom + 16, window.innerHeight - 160)),
-        } : { left: window.innerWidth / 2 - 160, top: window.innerHeight / 2 - 60 }}
+        animate={{ left: 210, top: window.innerHeight - 200 }}
         transition={{ type: 'spring', stiffness: 120, damping: 18 }}
       >
         <div className="guide-speech-chapter" style={{ color: chapter.color }}>{chapter.title}</div>
