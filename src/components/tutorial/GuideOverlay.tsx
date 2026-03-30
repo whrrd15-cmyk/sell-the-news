@@ -30,6 +30,19 @@ interface GuideChapter {
 }
 
 const CHAPTERS: GuideChapter[] = [
+  // ═══ Chapter 0: 인턴 소개 ═══
+  {
+    id: 'intro',
+    title: '프롤로그',
+    color: '#f0b429',
+    page: 'trading',
+    steps: [
+      { target: '[data-guide="hud"]', text: '나는 네 담당 선배야. 이름은 아직 비밀이지. 오늘부터 넌 증권사 인턴이야.' },
+      { target: '[data-guide="hud"]', text: '8분기 동안 목표 수익률을 달성해야 해. 1분기 목표는 5%. 뒤로 갈수록 어려워져.' },
+      { target: '[data-guide="hud"]', text: '8분기 전부 클리어하면 정규직이야. 뉴스를 읽고, 분석하고, 매매하는 게 네 일이야.' },
+      { target: '[data-guide="hud"]', text: '자, 화면부터 알려줄게.' },
+    ],
+  },
   // ═══ Chapter 1: 화면 익히기 ═══
   {
     id: 'ui',

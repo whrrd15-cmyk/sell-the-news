@@ -241,7 +241,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const isFirstEverRun = runNumber === 1 && meta.totalRuns === 0
 
     set({
-      screen: isFirstEverRun ? 'onboarding' : 'game',
+      screen: 'game',
       phase: 'news',
       runConfig: config,
       turn: 1,
