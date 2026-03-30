@@ -177,15 +177,35 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
 
   const characterImg = getCharacterImg()
 
-  // 화살표 위치 + 방향
-  const getArrowInfo = useCallback(() => {
+  // 화살표: 캐릭터 손끝 → 타겟 사이에 카툰 화살표
+  const getArrowPath = useCallback(() => {
     if (!targetRect) return null
-    if (targetRect.top < 80) {
-      // 타겟이 상단 → 아래에서 위를 가리킴
-      return { left: targetRect.left + targetRect.width / 2 - 10, top: targetRect.bottom + 6, dir: 'up' as const }
+    const isTop = targetRect.top < 80
+    // 캐릭터 손끝 위치 (point-up이면 머리 위, point-right이면 오른손)
+    const charLeft = isTop
+      ? Math.max(56, targetRect.left - 136)
+      : Math.max(56, targetRect.left - 136)
+    const charTop = isTop
+      ? targetRect.bottom + 10
+      : Math.max(10, Math.min(targetRect.top, window.innerHeight - 150))
+
+    let startX: number, startY: number, endX: number, endY: number
+
+    if (isTop) {
+      // point-up: 손이 캐릭터 머리 위 → 타겟 하단 중앙으로
+      startX = charLeft + 64
+      startY = charTop - 8
+      endX = targetRect.left + targetRect.width / 2
+      endY = targetRect.bottom + 4
+    } else {
+      // point-right: 손이 캐릭터 오른쪽 → 타겟 왼쪽 중앙으로
+      startX = charLeft + 128
+      startY = charTop + 40
+      endX = targetRect.left - 4
+      endY = targetRect.top + targetRect.height / 2
     }
-    // 기본: 왼쪽에서 오른쪽을 가리킴
-    return { left: targetRect.left - 24, top: targetRect.top + targetRect.height / 2 - 10, dir: 'right' as const }
+
+    return { startX, startY, endX, endY, isTop }
   }, [targetRect])
 
   // 페이지 네비게이트
@@ -319,27 +339,45 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         }} />
       )}
 
-      {/* 화살표: 타겟 방향으로 바운스 */}
+      {/* 카툰 화살표: 캐릭터 손끝 → 타겟 */}
       {hasTarget && (() => {
-        const arrow = getArrowInfo()
-        if (!arrow) return null
+        const ap = getArrowPath()
+        if (!ap) return null
+        // 곡선 제어점 (카툰 느낌의 살짝 굽은 경로)
+        const midX = (ap.startX + ap.endX) / 2 + (ap.isTop ? 20 : 0)
+        const midY = (ap.startY + ap.endY) / 2 + (ap.isTop ? 0 : -20)
+        // 화살촉 방향
+        const angle = Math.atan2(ap.endY - midY, ap.endX - midX)
+        const headLen = 10
+        const h1x = ap.endX - headLen * Math.cos(angle - 0.5)
+        const h1y = ap.endY - headLen * Math.sin(angle - 0.5)
+        const h2x = ap.endX - headLen * Math.cos(angle + 0.5)
+        const h2y = ap.endY - headLen * Math.sin(angle + 0.5)
+
         return (
-          <motion.div
-            className="guide-arrow"
-            animate={arrow.dir === 'up' ? { y: [0, -6, 0] } : { x: [0, 6, 0] }}
-            transition={{ duration: 0.8, repeat: Infinity }}
-            style={{ left: arrow.left, top: arrow.top }}
+          <motion.svg
+            className="guide-arrow-svg"
+            animate={{ opacity: [0.6, 1, 0.6] }}
+            transition={{ duration: 1.2, repeat: Infinity }}
+            style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 82 }}
           >
-            {arrow.dir === 'up' ? (
-              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
-                <path d="M10 0L0 14h20L10 0z" fill="#f0b429" />
-              </svg>
-            ) : (
-              <svg width="14" height="20" viewBox="0 0 14 20" fill="none">
-                <path d="M14 10L0 0v20l14-10z" fill="#f0b429" />
-              </svg>
-            )}
-          </motion.div>
+            {/* 곡선 경로 (점선, 카툰) */}
+            <path
+              d={`M${ap.startX},${ap.startY} Q${midX},${midY} ${ap.endX},${ap.endY}`}
+              stroke="#f0b429"
+              strokeWidth="3"
+              strokeDasharray="8 4"
+              strokeLinecap="round"
+              fill="none"
+              filter="drop-shadow(0 0 4px rgba(240,180,41,0.4))"
+            />
+            {/* 화살촉 */}
+            <polygon
+              points={`${ap.endX},${ap.endY} ${h1x},${h1y} ${h2x},${h2y}`}
+              fill="#f0b429"
+              filter="drop-shadow(0 0 3px rgba(240,180,41,0.5))"
+            />
+          </motion.svg>
         )
       })()}
 
