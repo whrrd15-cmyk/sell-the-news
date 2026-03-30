@@ -170,8 +170,11 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   // 타겟이 위에 있으면 point-up, 오른쪽이면 point-right, 없으면 idle
   const getCharacterImg = useCallback((): string => {
     if (!targetRect) return '/characters/mentor-hd/animations/breathing-idle/south/frame_000.png'
-    // 타겟이 상단이면 위를, 아니면 오른쪽을 가리킴
-    if (targetRect.top < 80) return '/characters/mentor-hd/animations/point-up/south/frame_002.png'
+    // 타겟이 캐릭터보다 위에 있으면 위를, 아니면 오른쪽을 가리킴
+    const isTopTarget = targetRect.top < 80
+    const charTop = isTopTarget ? targetRect.bottom + 10 : Math.max(10, targetRect.top)
+    const tCY = targetRect.top + targetRect.height / 2
+    if (tCY < charTop) return '/characters/mentor-hd/animations/point-up/south/frame_002.png'
     return '/characters/mentor-hd/animations/point-right/south/frame_002.png'
   }, [targetRect])
 
@@ -309,34 +312,66 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         }} />
       )}
 
-      {/* 픽셀아트 화살표: 캐릭터 손끝과 타겟 사이 */}
+      {/* 픽셀아트 화살표: 타겟 가장자리에 정확한 방향으로 배치 */}
       {hasTarget && (() => {
-        const isTop = targetRect!.top < 80
-        // 화살표 위치: 캐릭터와 타겟 중간
-        const charLeft = Math.max(56, targetRect!.left - 136)
-        const charTop = isTop ? targetRect!.bottom + 10 : Math.max(10, Math.min(targetRect!.top, window.innerHeight - 150))
+        // 캐릭터 위치 계산 (캐릭터 배치 로직과 동일)
+        const isTopTarget = targetRect!.top < 80
+        const charLeft = isTopTarget
+          ? Math.max(56, targetRect!.left - 136)
+          : Math.max(56, targetRect!.left - 136)
+        const charTop = isTopTarget
+          ? targetRect!.bottom + 10
+          : Math.max(10, Math.min(targetRect!.top, window.innerHeight - 150))
+        const charCX = charLeft + 64
+        const charCY = charTop + 64
 
-        let arrowLeft: number, arrowTop: number, arrowSrc: string
-        if (isTop) {
-          // 위를 가리킴: 캐릭터 머리 위에 화살표
-          arrowLeft = charLeft + 64 - 16
-          arrowTop = charTop - 50
-          arrowSrc = '/characters/arrow-up.png'
+        // 타겟 중심
+        const tCX = targetRect!.left + targetRect!.width / 2
+        const tCY = targetRect!.top + targetRect!.height / 2
+
+        // 캐릭터→타겟 각도
+        const angle = Math.atan2(tCY - charCY, tCX - charCX) * (180 / Math.PI)
+
+        // 화살표를 타겟 가장자리에 배치 (타겟 쪽 끝)
+        const pad = 8
+        let arrowLeft: number, arrowTop: number
+        if (Math.abs(angle) < 45) {
+          // 오른쪽
+          arrowLeft = targetRect!.left - 48 - pad
+          arrowTop = tCY - 24
+        } else if (angle >= 45 && angle < 135) {
+          // 아래쪽
+          arrowLeft = tCX - 24
+          arrowTop = targetRect!.top - 48 - pad
+        } else if (angle <= -45 && angle > -135) {
+          // 위쪽
+          arrowLeft = tCX - 24
+          arrowTop = targetRect!.bottom + pad
         } else {
-          // 오른쪽을 가리킴: 캐릭터 오른쪽에 화살표
-          arrowLeft = charLeft + 120
-          arrowTop = charTop + 20
-          arrowSrc = '/characters/arrow-right.png'
+          // 왼쪽
+          arrowLeft = targetRect!.right + pad
+          arrowTop = tCY - 24
         }
+
+        // 화살표 이미지 + CSS 회전으로 정확한 방향
+        // arrow-right.png 기본 → rotate로 8방향 커버
+        const arrowRotate = angle // 기본 화살표가 오른쪽이므로 각도 그대로
+        const bounceAxis = Math.abs(angle) < 45 || Math.abs(angle) > 135 ? 'x' : 'y'
+        const bounceDir = (angle > -135 && angle < -45) ? -1 : (angle >= 45 && angle <= 135) ? -1 : 1
 
         return (
           <motion.img
-            src={arrowSrc}
+            src="/characters/arrow-right.png"
             alt=""
             className="guide-pixel-arrow"
-            animate={isTop ? { y: [0, -8, 0] } : { x: [0, 8, 0] }}
+            animate={bounceAxis === 'x' ? { x: [0, 8 * bounceDir, 0] } : { y: [0, 8 * bounceDir, 0] }}
             transition={{ duration: 0.7, repeat: Infinity }}
-            style={{ left: arrowLeft, top: arrowTop, imageRendering: 'pixelated' }}
+            style={{
+              left: arrowLeft,
+              top: arrowTop,
+              imageRendering: 'pixelated',
+              transform: `rotate(${Math.round(angle)}deg)`,
+            }}
           />
         )
       })()}
