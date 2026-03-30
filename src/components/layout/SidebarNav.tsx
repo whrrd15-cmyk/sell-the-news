@@ -9,7 +9,7 @@
  * 분석: 시장 지표 확인 (유저가 필요할 때만)
  */
 
-export type PageId = 'trading' | 'news' | 'analysis'
+export type PageId = 'trading' | 'news' | 'analysis' | 'guide'
 
 interface SidebarNavProps {
   activePage: PageId
@@ -21,6 +21,7 @@ const NAV_ITEMS: { id: PageId; icon: string; label: string; color: string }[] = 
   { id: 'trading', icon: '📊', label: '매매', color: '#5ec269' },
   { id: 'news', icon: '📰', label: '뉴스', color: '#5b9bd5' },
   { id: 'analysis', icon: '💬', label: '사회', color: '#e88c3a' },
+  { id: 'guide', icon: '?', label: '가이드', color: '#f0b429' },
 ]
 
 export function SidebarNav({ activePage, onNavigate, unreadNewsCount = 0 }: SidebarNavProps) {

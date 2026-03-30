@@ -2006,6 +2006,96 @@ body {
 /* footer with icon */
 .social-v2-footer { display: flex; align-items: center; justify-content: center; gap: 4px; }
 
+/* ═══════════════════════════════════════════
+   인게임 가이드
+   ═══════════════════════════════════════════ */
+.guide-page { display: flex; height: 100%; gap: 4px; padding: 4px; }
+.guide-toc {
+  width: 220px; flex-shrink: 0; display: flex; flex-direction: column;
+  background: rgba(15,15,30,0.6); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px; backdrop-filter: blur(10px); overflow-y: auto;
+}
+.guide-toc-header {
+  padding: 10px 12px; font-size: 12px; font-weight: 800; color: var(--color-bal-gold);
+  border-bottom: 1px solid rgba(240,180,41,0.15);
+  letter-spacing: 2px;
+}
+.guide-section-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 12px; font-size: 11px; font-weight: 700; cursor: pointer;
+  color: var(--color-bal-text-dim); transition: all 0.12s;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.guide-section-btn:hover { background: rgba(255,255,255,0.03); }
+.guide-section-btn--active {
+  color: var(--section-color);
+  background: color-mix(in srgb, var(--section-color) 8%, transparent);
+}
+.guide-section-icon {
+  font-size: 9px; font-weight: 800; color: var(--section-color);
+  min-width: 18px; text-align: center;
+}
+.guide-section-title { flex: 1; }
+.guide-section-arrow { font-size: 8px; opacity: 0.5; }
+.guide-entries { overflow: hidden; }
+.guide-entry-btn {
+  display: block; width: 100%; padding: 5px 12px 5px 38px;
+  font-size: 10px; color: var(--color-bal-text-dim); text-align: left;
+  cursor: pointer; transition: all 0.1s;
+}
+.guide-entry-btn:hover { background: rgba(255,255,255,0.03); color: var(--color-bal-text); }
+.guide-entry-btn--active {
+  color: var(--color-bal-gold);
+  background: rgba(240,180,41,0.06);
+  border-left: 2px solid var(--color-bal-gold);
+}
+
+.guide-detail {
+  flex: 1; min-height: 0; overflow-y: auto;
+  background: rgba(15,15,30,0.4); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px; backdrop-filter: blur(10px);
+}
+.guide-detail-content { padding: 20px 24px; }
+.guide-detail-section-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px;
+}
+.guide-detail-title {
+  font-size: 16px; font-weight: 800; color: white; margin-bottom: 10px;
+  padding-bottom: 8px; border-bottom: 1px solid rgba(240,180,41,0.15);
+}
+.guide-detail-text {
+  font-size: 12px; color: var(--color-bal-text); line-height: 1.6; margin-bottom: 16px;
+}
+.guide-tips {
+  padding: 10px 12px; border-radius: 8px;
+  background: rgba(240,180,41,0.04);
+  border: 1px solid rgba(240,180,41,0.12);
+}
+.guide-tips-label {
+  font-size: 9px; font-weight: 800; color: var(--color-bal-gold);
+  letter-spacing: 2px; margin-bottom: 6px;
+}
+.guide-tip-item {
+  display: flex; gap: 6px; font-size: 11px; color: var(--color-bal-text-dim);
+  line-height: 1.5; margin-bottom: 2px;
+}
+.guide-tip-bullet { color: var(--color-bal-gold); flex-shrink: 0; }
+
+.guide-detail-empty {
+  height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+}
+.guide-detail-empty-icon {
+  width: 48px; height: 48px; border-radius: 12px; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 800; color: var(--color-bal-gold);
+  background: rgba(240,180,41,0.08);
+  border: 1px solid rgba(240,180,41,0.2);
+  box-shadow: 0 0 12px rgba(240,180,41,0.1);
+}
+.guide-detail-empty-text { font-size: 13px; font-weight: 700; color: var(--color-bal-text-dim); }
+.guide-detail-empty-sub { font-size: 10px; color: var(--color-bal-text-dim); opacity: 0.5; }
+
 /* 경제 지표 테이블 */
 .indicators-view { padding: 4px; }
 .indicators-table { width: 100%; border-collapse: collapse; font-size: 11px; }

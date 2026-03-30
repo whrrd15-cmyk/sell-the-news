@@ -16,6 +16,7 @@ import { MarketConditionModal } from '../ui/MarketConditionModal'
 import { SidebarNav, type PageId } from './SidebarNav'
 import { NewsPage } from '../pages/NewsPage'
 import { SocialPage } from '../pages/SocialPage'
+import { GuidePage } from '../pages/GuidePage'
 import { BalatroBackground } from '../effects/BalatroBackground'
 import type { BackgroundMood } from '../effects/BalatroBackground'
 import { BalChip } from '../ui/BalChip'
@@ -429,6 +430,11 @@ export function TradingTerminal() {
                 week={gameTime.week}
                 marketTrend={market.marketTrend}
               />
+            )}
+
+            {activePage === 'guide' && (
+              /* ════ 가이드 페이지 ════ */
+              <GuidePage />
             )}
           </div>
         </div>
