@@ -316,27 +316,43 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         />
       )}
 
-      {/* 캐릭터: 화면 우하단 고정 */}
-      <motion.div
-        className="guide-character"
-        initial={{ x: 50, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        style={{ right: 20, bottom: 130 }}
-      >
-        <motion.img
-          src={characterImg}
-          alt=""
-          className="guide-character-img"
-          animate={{ y: [0, -4, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        />
-      </motion.div>
+      {/* 캐릭터: 하이라이트 왼쪽에 붙임 */}
+      {(() => {
+        const charLeft = hasTarget ? Math.max(56, targetRect!.left - 136) : 70
+        const charTop = hasTarget
+          ? Math.max(10, Math.min(targetRect!.top + targetRect!.height / 2 - 64, window.innerHeight - 140))
+          : window.innerHeight - 220
+        return (
+          <motion.div
+            className="guide-character"
+            animate={{ left: charLeft, top: charTop }}
+            transition={{ type: 'spring', stiffness: 100, damping: 16 }}
+          >
+            <motion.img
+              src={characterImg}
+              alt=""
+              className="guide-character-img"
+              animate={{ y: [0, -4, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            />
+          </motion.div>
+        )
+      })()}
 
-      {/* 말풍선: 캐릭터 바로 위 */}
+      {/* 말풍선: 하이라이트 아래에 배치, 캐릭터와 겹치지 않게 */}
       <motion.div
         className="guide-speech-bubble"
         onClick={handleClick}
-        style={{ right: 20, bottom: 260 }}
+        animate={hasTarget ? {
+          left: Math.max(56, Math.min(targetRect!.left - 60, window.innerWidth - 340)),
+          top: Math.min(
+            hasTarget && targetRect!.top + targetRect!.height / 2 + 80 < window.innerHeight - 120
+              ? targetRect!.top + targetRect!.height / 2 + 80
+              : window.innerHeight - 130,
+            window.innerHeight - 100
+          ),
+        } : { left: window.innerWidth / 2 - 160, top: window.innerHeight / 2 }}
+        transition={{ type: 'spring', stiffness: 100, damping: 16 }}
       >
         <div className="guide-speech-chapter" style={{ color: chapter.color }}>{chapter.title}</div>
         <div className="guide-speech-text">
