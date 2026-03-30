@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { bgm, SFX } from './sound'
 
-const STORAGE_KEY = 'stock-roguelike-settings'
+const STORAGE_KEY = 'sell-the-news-settings'
 
 interface SettingsState {
   bgmVolume: number

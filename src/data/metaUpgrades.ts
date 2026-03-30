@@ -45,7 +45,7 @@ export function createInitialMetaProgress(): MetaProgress {
   }
 }
 
-const META_STORAGE_KEY = 'stock-roguelike-meta'
+const META_STORAGE_KEY = 'sell-the-news-meta'
 
 export function loadMetaProgress(): MetaProgress {
   try {

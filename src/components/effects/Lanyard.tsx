@@ -91,7 +91,7 @@ function Band({ maxSpeed = 50, minSpeed = 0, playerName = '' }: { maxSpeed?: num
     // 회사명
     ctx.fillStyle = '#f0b429'
     ctx.font = '500 16px system-ui, sans-serif'
-    ctx.fillText('STOCK ROGUELIKE', W / 2, 42)
+    ctx.fillText('SELL THE NEWS', W / 2, 42)
 
     // 구분선
     ctx.strokeStyle = '#ffffff12'

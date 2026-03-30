@@ -12,7 +12,7 @@ export function TitleScreen() {
   const [typedTitle, setTypedTitle] = useState('')
   const [typingDone, setTypingDone] = useState(false)
   const [showDebug, setShowDebug] = useState(false)
-  const fullTitle = 'STOCK ROGUELIKE'
+  const fullTitle = 'SELL THE NEWS'
 
   const saveExists = useMemo(() => hasSaveData(), [])
   const saveInfo = useMemo(() => {
@@ -82,10 +82,10 @@ export function TitleScreen() {
         </div>
 
         <p className="text-sm text-bal-text-dim mt-4 mb-1">
-          뉴스를 읽고, 흐름을 예측하라
+          뉴스를 읽고, 시장을 이겨라
         </p>
         <p className="text-xs text-bal-text-dim/60 mb-10">
-          주식 입문자를 위한 교육용 시뮬레이션
+          실시간 주식 트레이딩 시뮬레이션
         </p>
       </motion.div>
 

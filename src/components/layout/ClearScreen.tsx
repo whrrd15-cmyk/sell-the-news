@@ -94,7 +94,7 @@ export function ClearScreen() {
             />
             {/* 카드 콘텐츠 */}
             <div style={{ transform: 'translateZ(30px)', transformStyle: 'preserve-3d' }}>
-              <p className="text-[#f0b429] text-[10px] tracking-[3px] mb-3">STOCK ROGUELIKE</p>
+              <p className="text-[#f0b429] text-[10px] tracking-[3px] mb-3">SELL THE NEWS</p>
               <p className="text-white text-3xl font-bold mb-1">정규직</p>
               <p className="text-[#5ec269] text-[10px] tracking-[2px] mb-4">FULL-TIME EMPLOYEE</p>
               <div className="w-full h-[1px] bg-[#ffffff08] mb-4" />

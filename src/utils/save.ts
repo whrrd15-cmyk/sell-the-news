@@ -1,6 +1,6 @@
 // localStorage save/load for game state
 
-const SAVE_KEY = 'stock-roguelike-save'
+const SAVE_KEY = 'sell-the-news-save'
 
 export interface SaveData {
   version: number
