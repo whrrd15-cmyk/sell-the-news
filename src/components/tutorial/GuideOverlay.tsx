@@ -163,10 +163,10 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   return (
     <>
       {/* 어두운 마스크 (타겟 있으면 구멍, 없으면 전체 암전) */}
-      <svg className="guide-overlay-mask" onClick={handleNext}>
+      <svg className="guide-overlay-mask" viewBox={`0 0 ${typeof window !== 'undefined' ? window.innerWidth : 1920} ${typeof window !== 'undefined' ? window.innerHeight : 1080}`} onClick={handleNext}>
         <defs>
           <mask id="guide-mask">
-            <rect width="100%" height="100%" fill="white" />
+            <rect x="0" y="0" width="100%" height="100%" fill="white" />
             {hasTarget && (
               <rect
                 x={targetRect!.left - pad}
@@ -179,7 +179,7 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
             )}
           </mask>
         </defs>
-        <rect width="100%" height="100%" fill="rgba(0,0,0,0.75)" mask="url(#guide-mask)" />
+        <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.75)" mask="url(#guide-mask)" />
       </svg>
 
       {/* 골드 글로우 보더 */}
