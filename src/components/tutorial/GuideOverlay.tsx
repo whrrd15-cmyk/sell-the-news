@@ -215,6 +215,11 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
           ))}
         </div>
 
+        {/* 캐릭터 초상화 */}
+        <div className="guide-bar-avatar">
+          <img src="/characters/mentor-south.png" alt="" style={{ width: 40, height: 40, imageRendering: 'pixelated' }} />
+        </div>
+
         <div className="guide-bar-dialogue" onClick={handleNext}>
           <div className="guide-bar-speaker">???</div>
           <div className="guide-bar-text">
