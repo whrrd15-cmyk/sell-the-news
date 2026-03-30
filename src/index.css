@@ -2072,6 +2072,12 @@ body {
   0%, 100% { box-shadow: 0 0 20px 4px rgba(240,180,41,0.3), 0 0 60px 10px rgba(240,180,41,0.1), inset 0 0 15px rgba(240,180,41,0.04); border-color: rgba(240,180,41,0.6); }
   50% { box-shadow: 0 0 30px 8px rgba(240,180,41,0.45), 0 0 80px 16px rgba(240,180,41,0.15), inset 0 0 20px rgba(240,180,41,0.06); border-color: rgba(240,180,41,0.85); }
 }
+/* 화살표 인디케이터 */
+.guide-arrow {
+  position: fixed; z-index: 82; pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(240,180,41,0.5));
+}
+
 /* 캐릭터: 화면을 돌아다니며 가리킴 */
 .guide-character {
   position: fixed; z-index: 83; pointer-events: none;

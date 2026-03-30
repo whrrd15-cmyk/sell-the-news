@@ -166,35 +166,27 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   const totalSteps = CHAPTERS.reduce((s, c) => s + c.steps.length, 0)
   const currentGlobalStep = CHAPTERS.slice(0, chapterIndex).reduce((s, c) => s + c.steps.length, 0) + stepIndex + 1
 
-  // 캐릭터 애니메이션: 타겟 위치에 따라 가리키기/idle 전환
-  const [animFrame, setAnimFrame] = useState(0)
-
-  useEffect(() => {
-    if (!isOpen) return
-    const interval = setInterval(() => {
-      setAnimFrame(f => (f + 1) % 4)
-    }, 250)
-    return () => clearInterval(interval)
-  }, [isOpen])
-
-  // 타겟 위치 기반: 캐릭터 위에 있으면 point-up, 오른쪽이면 point-right, 그 외 idle
-  const getCharacterAnim = useCallback((): string => {
-    if (!targetRect) return 'breathing-idle/south'
-    // 캐릭터 위치: left 70, top innerHeight-220
-    const charCenterY = window.innerHeight - 220 + 64
-    const targetCenterY = targetRect.top + targetRect.height / 2
-    const targetCenterX = targetRect.left + targetRect.width / 2
-
-    // 타겟이 캐릭터보다 위에 있으면 → 위를 가리킴
-    if (targetCenterY < charCenterY - 50) return 'point-up/south'
-    // 타겟이 오른쪽에 있으면 → 오른쪽을 가리킴
-    if (targetCenterX > 200) return 'point-right/south'
-    // 기본: idle
-    return 'breathing-idle/east'
+  // 캐릭터: 가리키는 포즈 1프레임 고정 + idle 바운스로 생동감
+  // 타겟이 위에 있으면 point-up, 오른쪽이면 point-right, 없으면 idle
+  const getCharacterImg = useCallback((): string => {
+    if (!targetRect) return '/characters/mentor-hd/animations/breathing-idle/south/frame_000.png'
+    // 타겟이 상단이면 위를, 아니면 오른쪽을 가리킴
+    if (targetRect.top < 80) return '/characters/mentor-hd/animations/point-up/south/frame_002.png'
+    return '/characters/mentor-hd/animations/point-right/south/frame_002.png'
   }, [targetRect])
 
-  const charAnim = getCharacterAnim()
-  const characterImg = `/characters/mentor-hd/animations/${charAnim}/frame_${String(animFrame).padStart(3, '0')}.png`
+  const characterImg = getCharacterImg()
+
+  // 화살표 위치 + 방향
+  const getArrowInfo = useCallback(() => {
+    if (!targetRect) return null
+    if (targetRect.top < 80) {
+      // 타겟이 상단 → 아래에서 위를 가리킴
+      return { left: targetRect.left + targetRect.width / 2 - 10, top: targetRect.bottom + 6, dir: 'up' as const }
+    }
+    // 기본: 왼쪽에서 오른쪽을 가리킴
+    return { left: targetRect.left - 24, top: targetRect.top + targetRect.height / 2 - 10, dir: 'right' as const }
+  }, [targetRect])
 
   // 페이지 네비게이트
   useEffect(() => {
@@ -327,10 +319,39 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         }} />
       )}
 
-      {/* 캐릭터: 화면 하단 왼쪽에 고정 배치 */}
+      {/* 화살표: 타겟 방향으로 바운스 */}
+      {hasTarget && (() => {
+        const arrow = getArrowInfo()
+        if (!arrow) return null
+        return (
+          <motion.div
+            className="guide-arrow"
+            animate={arrow.dir === 'up' ? { y: [0, -6, 0] } : { x: [0, 6, 0] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+            style={{ left: arrow.left, top: arrow.top }}
+          >
+            {arrow.dir === 'up' ? (
+              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <path d="M10 0L0 14h20L10 0z" fill="#f0b429" />
+              </svg>
+            ) : (
+              <svg width="14" height="20" viewBox="0 0 14 20" fill="none">
+                <path d="M14 10L0 0v20l14-10z" fill="#f0b429" />
+              </svg>
+            )}
+          </motion.div>
+        )
+      })()}
+
+      {/* 캐릭터: 하이라이트 칸 왼쪽에 배치 */}
       <motion.div
         className="guide-character"
-        animate={{ left: 70, top: window.innerHeight - 220 }}
+        animate={hasTarget ? {
+          left: Math.max(56, targetRect!.left - 136),
+          top: targetRect!.top < 80
+            ? targetRect!.bottom + 10  // 타겟이 화면 상단이면 캐릭터를 아래에
+            : Math.max(10, Math.min(targetRect!.top, window.innerHeight - 150)),
+        } : { left: 70, top: window.innerHeight - 220 }}
         transition={{ type: 'spring', stiffness: 120, damping: 18 }}
       >
         <motion.img
@@ -342,11 +363,14 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         />
       </motion.div>
 
-      {/* 대화 말풍선: 캐릭터 오른쪽에 배치 */}
+      {/* 대화 말풍선: 하이라이트 칸 아래 또는 캐릭터 옆 */}
       <motion.div
         className="guide-speech-bubble"
         onClick={handleClick}
-        animate={{ left: 210, top: window.innerHeight - 200 }}
+        animate={hasTarget ? {
+          left: Math.max(60, Math.min(targetRect!.left, window.innerWidth - 340)),
+          top: Math.min(targetRect!.bottom + 20, window.innerHeight - 130),
+        } : { left: window.innerWidth / 2 - 160, top: window.innerHeight / 2 }}
         transition={{ type: 'spring', stiffness: 120, damping: 18 }}
       >
         <div className="guide-speech-chapter" style={{ color: chapter.color }}>{chapter.title}</div>
