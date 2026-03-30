@@ -2100,6 +2100,14 @@ body {
 .guide-bar-dialogue {
   flex: 1; padding: 10px 16px; cursor: pointer; min-width: 0;
 }
+.guide-bar-chapter-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 1px; margin-bottom: 2px;
+}
+.guide-bar-tab--done { opacity: 0.4; }
+.guide-bar-wait-hint {
+  color: var(--color-bal-gold); font-weight: 700;
+  animation: pulse 1.5s infinite;
+}
 .guide-bar-speaker {
   font-size: 10px; font-weight: 700; color: var(--color-bal-gold); margin-bottom: 3px;
 }

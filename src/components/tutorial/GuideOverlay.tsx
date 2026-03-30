@@ -1,77 +1,133 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { SFX } from '../../utils/sound'
 import type { PageId } from '../layout/SidebarNav'
 
 /**
- * 인게임 가이드 오버레이 — ReactBits ElectricBorder/SpotlightCard 스타일 효과
+ * 인터랙티브 가이드 오버레이 — 7챕터 체험형 튜토리얼
  *
- * - 전기 보더: conic-gradient 회전으로 빛이 보더를 따라 흐름
- * - 코너 라이트: 4코너 골드 점 깜빡임
- * - 강화된 글로우: 48px 반경 + 이중 레이어
- * - 내부 스캔라인: CRT 느낌 수평선 흐름
+ * 핵심 원칙:
+ * 1. 체험형: waitForClick으로 유저가 직접 클릭
+ * 2. 단계적: 챕터별로 기능을 열어줌
+ * 3. 컨텍스트: 실제 게임 화면 위에서 하이라이팅
+ * 4. 캐릭터: 멘토가 상황별 대사
  */
 
 interface GuideStep {
   target: string
   text: string
   page?: PageId
+  waitForClick?: boolean
+  characterMood?: 'idle' | 'celebrate' | 'warning' | 'advice'
 }
 
-interface GuideSection {
+interface GuideChapter {
   id: string
-  label: string
+  title: string
   color: string
   page: PageId
   steps: GuideStep[]
 }
 
-const GUIDE_SECTIONS: GuideSection[] = [
+const CHAPTERS: GuideChapter[] = [
+  // ═══ Chapter 1: 화면 익히기 ═══
   {
-    id: 'basics',
-    label: '기본',
+    id: 'ui',
+    title: 'Ch.1 화면 익히기',
     color: '#f0b429',
     page: 'trading',
     steps: [
-      { target: '[data-guide="hud"]', text: '현금, 수익률, RP가 여기 표시돼. RP는 스킬이랑 아이템 살 때 쓰는 화폐야.' },
-      { target: '.trading-time-display', text: '게임 시간이야. 장 시간(9시~16시)에만 주가가 움직이고 거래할 수 있어.' },
-      { target: '.trading-speed-controls', text: '속도 조절. 일시정지 중에도 뉴스 읽기, 분석, 주문 설정은 가능해.' },
-      { target: '.trading-quarter-bar', text: '분기 진행률이야. 13주가 지나면 분기가 끝나고 실적을 평가받아.' },
+      { target: '[data-guide="hud"]', text: '여기가 HUD야. 현금, 수익률, RP, 게임 시간이 한눈에 보여.' },
+      { target: '.trading-speed-controls', text: '속도 조절 버튼이야. 일시정지를 눌러봐. 멈춰도 뉴스 읽기, 주문 설정은 가능해.', waitForClick: true },
+      { target: '.stock-tab-bar', text: '종목 탭이야. PXT(PixelTech)를 클릭해서 선택해봐.', waitForClick: true },
+      { target: '[data-guide="chart"]', text: '이게 주가 차트야. 캔들스틱이라고 해. 초록이 상승, 빨강이 하락.' },
+      { target: '[data-guide="orderbook"]', text: '호가창. 매수/매도 호가와 대기 수량이 표시돼. 실제 거래소와 같은 구조야.' },
+      { target: '[data-guide="order"]', text: '주문서. 여기서 매수/매도를 해. 곧 직접 해볼 거야.' },
     ],
   },
+  // ═══ Chapter 2: 첫 매수 ═══
   {
-    id: 'trading',
-    label: '매매',
+    id: 'first-trade',
+    title: 'Ch.2 첫 매수',
     color: '#5ec269',
     page: 'trading',
     steps: [
-      { target: '.stock-tab-bar', text: '종목 탭이야. 여기서 매매할 종목을 선택해. 5개 섹터 + ETF가 있어.' },
-      { target: '[data-guide="orderbook"]', text: '호가창. 매수/매도 호가와 수량이 표시돼. 실제 거래소와 비슷한 구조야.' },
-      { target: '[data-guide="order"]', text: '주문서. 현물 매수/매도, 공매도, 레버리지, 지정가 주문을 여기서 해.' },
-      { target: '[data-guide="chart"]', text: '차트. 선택 종목의 주가 흐름이야. 캔들스틱 패턴을 읽는 것도 실력이지.' },
+      { target: '[data-guide="order"]', text: '자, 첫 거래를 해보자. 주문서를 봐.' },
+      { target: '[data-guide="order"]', text: '수량에 5를 입력하고, 매수 버튼을 눌러봐!', waitForClick: true },
+      { target: '[data-guide="order"]', text: '축하해! 첫 거래 성공이야!', characterMood: 'celebrate' },
+      { target: '.trading-quarter-bar', text: '분기 진행률이야. 13주가 지나면 분기가 끝나고 실적을 평가받아.' },
     ],
   },
+  // ═══ Chapter 3: 뉴스 읽기 ═══
   {
     id: 'news',
-    label: '뉴스',
+    title: 'Ch.3 뉴스 읽기',
     color: '#5b9bd5',
     page: 'news',
     steps: [
+      { target: '.sidebar-nav-item:nth-child(2)', text: '뉴스 탭으로 이동해. 클릭!', waitForClick: true, page: 'trading' },
       { target: '.news-v2-tabs', text: '카테고리별로 뉴스를 필터링할 수 있어. 정부, 경제, 기술, 지정학...', page: 'news' },
-      { target: '.news-v2-body', text: '뉴스 목록이야. 속보는 크게, 일반은 작게, 소음은 접혀서 나와. 중요한 걸 골라 읽어.', page: 'news' },
-      { target: '.news-v2-body', text: '기사를 클릭하면 상세 + 인과관계 분석이 나와. 출처 신뢰도와 섹터 영향을 확인해.', page: 'news' },
+      { target: '.news-v2-body', text: '뉴스 목록이야. 속보는 크게, 일반은 작게, 소음은 접혀서 나와.', page: 'news' },
+      { target: '.news-v2-body', text: '기사를 클릭해봐. 상세 내용과 인과관계 분석이 나올 거야.', waitForClick: true, page: 'news' },
+      { target: '.news-v2-body', text: '출처와 신뢰도를 꼭 봐. 공영방송은 믿을 만하고, SNS는 가짜일 수 있어.', page: 'news' },
       { target: '.news-v2-tabs', text: '가짜 뉴스에 주의해. 펌프앤덤프, FUD, 루머... 스킬을 찍으면 탐지력이 올라가.', page: 'news' },
+      { target: '.news-v2-body', text: '이제 뉴스를 읽고 매매 판단을 내리는 게 네 일이야. 핵심이니까 꼭 기억해.', page: 'news' },
     ],
   },
+  // ═══ Chapter 4: 여론과 경제지표 ═══
   {
     id: 'social',
-    label: '여론',
+    title: 'Ch.4 여론/경제지표',
     color: '#e88c3a',
     page: 'analysis',
     steps: [
-      { target: '.social-v2-tabs', text: '여론과 경제지표 탭이야. 사람들의 의견과 숫자를 읽고 시장을 판단해.', page: 'analysis' },
-      { target: '.social-v2-body', text: 'SNS 여론이 항상 맞는 건 아니야. 루머도 섞여 있으니까 비판적으로 읽어.', page: 'analysis' },
-      { target: '.social-v2-body', text: '경제지표의 해석은 네 몫이야. 금리, 실업률, GDP... 숫자가 의미하는 걸 생각해봐.', page: 'analysis' },
+      { target: '.sidebar-nav-item:nth-child(3)', text: '사회 탭으로 이동해.', waitForClick: true, page: 'news' },
+      { target: '.social-v2-body', text: '사람들의 SNS 게시글이야. 시장 분위기를 읽을 수 있어.', page: 'analysis' },
+      { target: '.social-v2-body', text: '근데 여론이 항상 맞는 건 아니야. 루머도 섞여 있으니까 비판적으로 읽어.', page: 'analysis', characterMood: 'warning' },
+      { target: '.social-v2-tabs', text: '경제지표 탭도 확인해봐. GDP, 실업률, 금리 같은 숫자가 나와.', waitForClick: true, page: 'analysis' },
+      { target: '.social-v2-body', text: '이 숫자들의 해석은 네 몫이야. 금리 인상은 보통 주가 하락. 실업률 상승은 경기 둔화 신호.', page: 'analysis' },
+    ],
+  },
+  // ═══ Chapter 5: 주문과 리스크 ═══
+  {
+    id: 'orders',
+    title: 'Ch.5 주문/리스크',
+    color: '#9b72cf',
+    page: 'trading',
+    steps: [
+      { target: '.sidebar-nav-item:nth-child(1)', text: '매매 탭으로 돌아가자.', waitForClick: true, page: 'analysis' },
+      { target: '[data-guide="order"]', text: '주문서에서 "주문" 탭을 찾아 클릭해봐.', waitForClick: true, page: 'trading' },
+      { target: '[data-guide="order"]', text: '지정가 매수: 원하는 가격에 자동 매수. 미리 계획하는 거지.', page: 'trading' },
+      { target: '[data-guide="order"]', text: '손절매: 일정 % 이하로 떨어지면 자동 매도. 큰 손실을 방지해.', page: 'trading' },
+      { target: '[data-guide="order"]', text: '감정으로 매매하는 것보다 미리 계획하는 게 훨씬 중요해. 기억해둬.', page: 'trading', characterMood: 'advice' },
+      { target: '[data-guide="order"]', text: '레버리지와 공매도는 위험한 도구야. 나중에 스킬로 열 수 있어.', page: 'trading', characterMood: 'warning' },
+    ],
+  },
+  // ═══ Chapter 6: RP와 스킬 ═══
+  {
+    id: 'economy',
+    title: 'Ch.6 RP/스킬',
+    color: '#f0b429',
+    page: 'trading',
+    steps: [
+      { target: '[data-guide="hud"]', text: 'RP는 평판 포인트. 스킬과 아이템을 사는 화폐야.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: '매주 기본 5RP + 보유 종목당 1RP + 수익이면 3RP + 가짜뉴스 회피 2RP.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: '상점에서 스킬을 사면 영구적으로 기능이 추가돼.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: '팩트체크, 공매도, 레버리지... 뭘 먼저 살지 전략적으로 고민해.', page: 'trading', characterMood: 'advice' },
+      { target: '[data-guide="hud"]', text: '아이템은 일회용이야. 비상자금, 투자보험 같은 거. 위기 때 쓰면 효과적.', page: 'trading' },
+    ],
+  },
+  // ═══ 에필로그 ═══
+  {
+    id: 'epilogue',
+    title: '실전 시작',
+    color: '#f0b429',
+    page: 'trading',
+    steps: [
+      { target: '[data-guide="hud"]', text: '좋아, 기본은 다 알려줬어. 이제 네 판단이야.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: '뉴스를 꼼꼼히 읽고, 감정 배제하고, 분산투자해. 이 세 가지만 기억해.', page: 'trading', characterMood: 'advice' },
+      { target: '[data-guide="hud"]', text: '가이드 버튼으로 언제든 다시 도움받을 수 있어.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: '행운을 빌어, 인턴. ...아, 내 이름은 나중에 알려줄게.', page: 'trading' },
     ],
   },
 ]
@@ -83,21 +139,29 @@ interface GuideOverlayProps {
 }
 
 export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps) {
-  const [sectionIndex, setSectionIndex] = useState(0)
+  const [chapterIndex, setChapterIndex] = useState(0)
   const [stepIndex, setStepIndex] = useState(0)
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
   const [displayedText, setDisplayedText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const clickListenerRef = useRef<((e: MouseEvent) => void) | null>(null)
 
-  const section = GUIDE_SECTIONS[sectionIndex]
-  const step = section.steps[stepIndex]
-  const isLastStep = stepIndex >= section.steps.length - 1
+  const chapter = CHAPTERS[chapterIndex]
+  const step = chapter.steps[stepIndex]
+  const isLastStep = stepIndex >= chapter.steps.length - 1
+  const isLastChapter = chapterIndex >= CHAPTERS.length - 1
+  const totalSteps = CHAPTERS.reduce((s, c) => s + c.steps.length, 0)
+  const currentGlobalStep = CHAPTERS.slice(0, chapterIndex).reduce((s, c) => s + c.steps.length, 0) + stepIndex + 1
 
-  // 섹션 변경 시 해당 페이지로 이동
+  // 캐릭터 이미지 (mood에 따라)
+  const characterImg = '/characters/mentor-south.png'
+
+  // 페이지 네비게이트
   useEffect(() => {
     if (!isOpen) return
-    onNavigate(section.page)
-  }, [isOpen, sectionIndex, section.page, onNavigate])
+    const targetPage = step?.page ?? chapter.page
+    onNavigate(targetPage)
+  }, [isOpen, chapterIndex, stepIndex])
 
   // 타겟 요소 추적
   const updateTarget = useCallback(() => {
@@ -109,16 +173,10 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
 
   useEffect(() => {
     if (!isOpen) return
-    const t = setTimeout(updateTarget, 300)
-    const interval = setInterval(updateTarget, 400)
+    const t = setTimeout(updateTarget, 400)
+    const interval = setInterval(updateTarget, 500)
     return () => { clearTimeout(t); clearInterval(interval) }
-  }, [isOpen, sectionIndex, stepIndex, updateTarget])
-
-  // 스텝의 page 속성으로 추가 네비게이트
-  useEffect(() => {
-    if (!isOpen || !step?.page) return
-    onNavigate(step.page)
-  }, [isOpen, stepIndex, step?.page, onNavigate])
+  }, [isOpen, chapterIndex, stepIndex, updateTarget])
 
   // 타이핑 효과
   useEffect(() => {
@@ -135,23 +193,65 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         setIsTyping(false)
         clearInterval(interval)
       }
-    }, 25)
+    }, 22)
     return () => clearInterval(interval)
-  }, [isOpen, sectionIndex, stepIndex])
+  }, [isOpen, chapterIndex, stepIndex])
 
-  const handleNext = useCallback(() => {
+  // waitForClick: 타겟 클릭 감지
+  useEffect(() => {
+    if (!isOpen || !step?.waitForClick || isTyping) return
+
+    const handler = (e: MouseEvent) => {
+      if (!targetRect) return
+      const x = e.clientX, y = e.clientY
+      const inBounds = x >= targetRect.left - 20 && x <= targetRect.right + 20 &&
+                        y >= targetRect.top - 20 && y <= targetRect.bottom + 20
+      if (inBounds) {
+        // 실제 클릭 전파
+        const target = document.elementFromPoint(x, y)
+        if (target) {
+          target.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }))
+        }
+        setTimeout(() => {
+          SFX.click()
+          advanceStep()
+        }, 200)
+      }
+    }
+
+    document.addEventListener('click', handler, true)
+    clickListenerRef.current = handler
+    return () => {
+      document.removeEventListener('click', handler, true)
+      clickListenerRef.current = null
+    }
+  }, [isOpen, step?.waitForClick, isTyping, targetRect])
+
+  const advanceStep = useCallback(() => {
+    if (isLastStep) {
+      if (isLastChapter) {
+        onClose()
+      } else {
+        setChapterIndex(i => i + 1)
+        setStepIndex(0)
+      }
+    } else {
+      setStepIndex(i => i + 1)
+    }
+  }, [isLastStep, isLastChapter, onClose])
+
+  const handleClick = useCallback(() => {
+    if (step?.waitForClick && !isTyping) return // waitForClick 스텝은 대화 클릭으로 진행 불가
     if (isTyping) {
       setDisplayedText(step.text)
       setIsTyping(false)
       return
     }
-    if (!isLastStep) {
-      setStepIndex(i => i + 1)
-    }
-  }, [isTyping, isLastStep, step])
+    advanceStep()
+  }, [isTyping, step, advanceStep])
 
-  const handleSectionChange = useCallback((idx: number) => {
-    setSectionIndex(idx)
+  const handleChapterJump = useCallback((idx: number) => {
+    setChapterIndex(idx)
     setStepIndex(0)
   }, [])
 
@@ -162,19 +262,19 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
 
   return (
     <>
-      {/* 어두운 마스크 (타겟 있으면 구멍, 없으면 전체 암전) */}
-      <svg className="guide-overlay-mask" viewBox={`0 0 ${typeof window !== 'undefined' ? window.innerWidth : 1920} ${typeof window !== 'undefined' ? window.innerHeight : 1080}`} onClick={handleNext}>
+      {/* 어두운 마스크 */}
+      <svg className="guide-overlay-mask"
+        viewBox={`0 0 ${typeof window !== 'undefined' ? window.innerWidth : 1920} ${typeof window !== 'undefined' ? window.innerHeight : 1080}`}
+        onClick={step?.waitForClick ? undefined : handleClick}
+      >
         <defs>
           <mask id="guide-mask">
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
             {hasTarget && (
               <rect
-                x={targetRect!.left - pad}
-                y={targetRect!.top - pad}
-                width={targetRect!.width + pad * 2}
-                height={targetRect!.height + pad * 2}
-                rx={12}
-                fill="black"
+                x={targetRect!.left - pad} y={targetRect!.top - pad}
+                width={targetRect!.width + pad * 2} height={targetRect!.height + pad * 2}
+                rx={12} fill="black"
               />
             )}
           </mask>
@@ -184,44 +284,36 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
 
       {/* 골드 글로우 보더 */}
       {hasTarget && (
-        <div
-          className="guide-glow-border"
-          style={{
-            left: targetRect!.left - pad,
-            top: targetRect!.top - pad,
-            width: targetRect!.width + pad * 2,
-            height: targetRect!.height + pad * 2,
-          }}
-        />
+        <div className="guide-glow-border" style={{
+          left: targetRect!.left - pad, top: targetRect!.top - pad,
+          width: targetRect!.width + pad * 2, height: targetRect!.height + pad * 2,
+        }} />
       )}
 
       {/* 하단 대화 바 */}
-      <motion.div
-        className="guide-bar"
-        initial={{ y: 80 }}
-        animate={{ y: 0 }}
-        exit={{ y: 80 }}
-      >
+      <motion.div className="guide-bar" initial={{ y: 80 }} animate={{ y: 0 }} exit={{ y: 80 }}>
+        {/* 챕터 탭 */}
         <div className="guide-bar-tabs">
-          {GUIDE_SECTIONS.map((sec, i) => (
-            <button
-              key={sec.id}
-              className={`guide-bar-tab ${sectionIndex === i ? 'guide-bar-tab--active' : ''}`}
-              style={{ '--tab-color': sec.color } as React.CSSProperties}
-              onClick={() => handleSectionChange(i)}
+          {CHAPTERS.map((ch, i) => (
+            <button key={ch.id}
+              className={`guide-bar-tab ${chapterIndex === i ? 'guide-bar-tab--active' : ''} ${i < chapterIndex ? 'guide-bar-tab--done' : ''}`}
+              style={{ '--tab-color': ch.color } as React.CSSProperties}
+              onClick={() => handleChapterJump(i)}
+              title={ch.title}
             >
-              {sec.label}
+              {i < chapterIndex ? '~' : (i + 1)}
             </button>
           ))}
         </div>
 
-        {/* 캐릭터 초상화 */}
+        {/* 캐릭터 */}
         <div className="guide-bar-avatar">
-          <img src="/characters/mentor-south.png" alt="" style={{ width: 40, height: 40, imageRendering: 'pixelated' }} />
+          <img src={characterImg} alt="" style={{ width: 40, height: 40, imageRendering: 'pixelated' }} />
         </div>
 
-        <div className="guide-bar-dialogue" onClick={handleNext}>
-          <div className="guide-bar-speaker">???</div>
+        {/* 대사 */}
+        <div className="guide-bar-dialogue" onClick={handleClick}>
+          <div className="guide-bar-chapter-label" style={{ color: chapter.color }}>{chapter.title}</div>
           <div className="guide-bar-text">
             {displayedText}
             {isTyping && (
@@ -229,9 +321,11 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
             )}
           </div>
           <div className="guide-bar-controls">
-            <span className="guide-bar-progress">{stepIndex + 1}/{section.steps.length}</span>
-            {!isTyping && !isLastStep && <span className="guide-bar-next">클릭하면 계속</span>}
-            {!isTyping && isLastStep && <span className="guide-bar-next">다른 카테고리를 선택하세요</span>}
+            <span className="guide-bar-progress">{currentGlobalStep}/{totalSteps}</span>
+            {step?.waitForClick && !isTyping
+              ? <span className="guide-bar-wait-hint">직접 클릭하세요</span>
+              : !isTyping && <span className="guide-bar-next">클릭하면 계속</span>
+            }
           </div>
         </div>
 
