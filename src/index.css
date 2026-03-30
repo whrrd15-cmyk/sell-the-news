@@ -3282,6 +3282,30 @@ body {
   background: rgba(255,255,255,0.05);
 }
 
+/* 로딩 화면 */
+.onboarding-loading {
+  position: relative; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.onboarding-loading-title {
+  font-size: 28px; font-weight: 800; color: var(--color-bal-gold);
+  letter-spacing: 6px; text-shadow: 0 0 20px rgba(240,180,41,0.3);
+}
+.onboarding-loading-sub {
+  font-size: 11px; color: var(--color-bal-text-dim); letter-spacing: 2px;
+}
+.onboarding-loading-bar {
+  width: 240px; height: 4px; background: rgba(255,255,255,0.08);
+  border-radius: 2px; overflow: hidden;
+}
+.onboarding-loading-fill {
+  height: 100%; background: linear-gradient(90deg, var(--color-bal-gold), #ffe066);
+  border-radius: 2px; transition: width 0.1s;
+}
+.onboarding-loading-pct {
+  font-size: 10px; color: var(--color-bal-text-dim); font-variant-numeric: tabular-nums;
+}
+
 /* 픽셀 캐릭터 */
 .onboarding-character {
   position: relative;

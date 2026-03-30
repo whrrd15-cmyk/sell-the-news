@@ -18,8 +18,7 @@ type DialogueScript = Record<string, DialogueLine[]>
 /* ─── 대화 스크립트 (확장판) ─── */
 const SCRIPT: DialogueScript = {
   intro: [
-    { speaker: '???', text: '...이봐, 들리나?' },
-    { speaker: '???', text: '좋아, 연결됐군. 나는 네 담당 선배야. 이름? ...아직은 비밀이지.' },
+    { speaker: '???', text: '나는 네 담당 선배야. 이름? ...아직은 비밀이지.' },
     { speaker: '???', text: '축하해, 오늘부터 넌 증권사 인턴이야.' },
     { speaker: '???', text: '네 임무를 설명해줄게. 잘 들어.' },
     { speaker: '???', text: '총 8분기야. 1분기 = 13주. 1주 = 약 70초 실시간.' },
@@ -129,8 +128,25 @@ export function OnboardingScreen() {
 
   // 전체 흐름 단계
   const [flowPhase, setFlowPhase] = useState<
-    'dialogue' | 'presentation' | 'historyAnim' | 'done'
-  >('dialogue')
+    'loading' | 'dialogue' | 'presentation' | 'historyAnim' | 'done'
+  >('loading')
+
+  // 로딩 화면 → 대화로 전환
+  const [loadingProgress, setLoadingProgress] = useState(0)
+  useEffect(() => {
+    if (flowPhase !== 'loading') return
+    const interval = setInterval(() => {
+      setLoadingProgress(p => {
+        if (p >= 100) {
+          clearInterval(interval)
+          setTimeout(() => setFlowPhase('dialogue'), 400)
+          return 100
+        }
+        return p + Math.random() * 8 + 2
+      })
+    }, 80)
+    return () => clearInterval(interval)
+  }, [flowPhase])
 
   const currentLines = SCRIPT[scriptKey] || []
   const currentLine = currentLines[lineIndex]
@@ -302,17 +318,35 @@ export function OnboardingScreen() {
         건너뛰기 &raquo;
       </motion.button>
 
-      {/* ─── 픽셀 캐릭터 ─── */}
-      <div className="onboarding-character">
+      {/* ─── 픽셀 캐릭터 (로딩 후 표시) ─── */}
+      {flowPhase !== 'loading' && <div className="onboarding-character">
         <img
           src="/characters/mentor-hd/rotations/south.png"
           alt="Mentor"
           className="onboarding-character-img"
           style={{ imageRendering: 'pixelated' }}
         />
-      </div>
+      </div>}
 
       <AnimatePresence mode="wait">
+        {/* ─── 로딩 화면 ─── */}
+        {flowPhase === 'loading' && (
+          <motion.div
+            key="loading"
+            className="onboarding-loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="onboarding-loading-title">SELL THE NEWS</div>
+            <div className="onboarding-loading-sub">시스템 초기화 중...</div>
+            <div className="onboarding-loading-bar">
+              <div className="onboarding-loading-fill" style={{ width: `${Math.min(loadingProgress, 100)}%` }} />
+            </div>
+            <div className="onboarding-loading-pct">{Math.min(Math.floor(loadingProgress), 100)}%</div>
+          </motion.div>
+        )}
+
         {/* ─── 대화 모드 ─── */}
         {flowPhase === 'dialogue' && currentLine && (
           <motion.div
