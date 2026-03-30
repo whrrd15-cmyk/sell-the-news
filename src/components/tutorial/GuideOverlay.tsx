@@ -166,29 +166,35 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   const totalSteps = CHAPTERS.reduce((s, c) => s + c.steps.length, 0)
   const currentGlobalStep = CHAPTERS.slice(0, chapterIndex).reduce((s, c) => s + c.steps.length, 0) + stepIndex + 1
 
-  // 캐릭터 이미지: 타겟 방향을 바라보는 idle 애니메이션
+  // 캐릭터 애니메이션: 타겟 위치에 따라 가리키기/idle 전환
   const [animFrame, setAnimFrame] = useState(0)
 
   useEffect(() => {
     if (!isOpen) return
     const interval = setInterval(() => {
-      setAnimFrame(f => (f + 1) % 4) // breathing-idle은 4프레임
-    }, 300)
+      setAnimFrame(f => (f + 1) % 4)
+    }, 250)
     return () => clearInterval(interval)
   }, [isOpen])
 
-  // 타겟이 캐릭터의 어느 쪽에 있는지 → 해당 방향을 바라봄
-  const getCharacterDirection = useCallback((): string => {
-    if (!targetRect) return 'south'
-    // 캐릭터는 타겟의 왼쪽 아래에 배치됨
+  // 타겟 위치 기반: 캐릭터 위에 있으면 point-up, 오른쪽이면 point-right, 그 외 idle
+  const getCharacterAnim = useCallback((): string => {
+    if (!targetRect) return 'breathing-idle/south'
+    // 캐릭터 위치: left 70, top innerHeight-220
+    const charCenterY = window.innerHeight - 220 + 64
+    const targetCenterY = targetRect.top + targetRect.height / 2
     const targetCenterX = targetRect.left + targetRect.width / 2
-    // 캐릭터가 타겟보다 왼쪽이면 east를 바라봄 (타겟을 향해)
-    // 기본적으로 east (오른쪽을 바라보며 타겟을 향함)
-    return 'east'
+
+    // 타겟이 캐릭터보다 위에 있으면 → 위를 가리킴
+    if (targetCenterY < charCenterY - 50) return 'point-up/south'
+    // 타겟이 오른쪽에 있으면 → 오른쪽을 가리킴
+    if (targetCenterX > 200) return 'point-right/south'
+    // 기본: idle
+    return 'breathing-idle/east'
   }, [targetRect])
 
-  const charDir = getCharacterDirection()
-  const characterImg = `/characters/mentor-hd/animations/breathing-idle/${charDir}/frame_${String(animFrame).padStart(3, '0')}.png`
+  const charAnim = getCharacterAnim()
+  const characterImg = `/characters/mentor-hd/animations/${charAnim}/frame_${String(animFrame).padStart(3, '0')}.png`
 
   // 페이지 네비게이트
   useEffect(() => {
@@ -231,25 +237,21 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
     return () => clearInterval(interval)
   }, [isOpen, chapterIndex, stepIndex])
 
-  // waitForClick: 타겟 클릭 감지
+  // waitForClick: 타겟 클릭 감지 — document 레벨에서 모든 클릭 감지
   useEffect(() => {
     if (!isOpen || !step?.waitForClick || isTyping) return
 
     const handler = (e: MouseEvent) => {
-      if (!targetRect) return
-      const x = e.clientX, y = e.clientY
-      const inBounds = x >= targetRect.left - 20 && x <= targetRect.right + 20 &&
-                        y >= targetRect.top - 20 && y <= targetRect.bottom + 20
-      if (inBounds) {
-        // 실제 클릭 전파
-        const target = document.elementFromPoint(x, y)
-        if (target) {
-          target.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }))
-        }
+      // 타겟 요소 또는 그 자식을 클릭했는지 확인
+      if (!step.target) return
+      const targetEl = document.querySelector(step.target)
+      if (!targetEl) return
+      const clicked = e.target as Node
+      if (targetEl.contains(clicked) || targetEl === clicked) {
         setTimeout(() => {
           SFX.click()
           advanceStep()
-        }, 200)
+        }, 300)
       }
     }
 
@@ -300,6 +302,7 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
       <svg className="guide-overlay-mask"
         viewBox={`0 0 ${typeof window !== 'undefined' ? window.innerWidth : 1920} ${typeof window !== 'undefined' ? window.innerHeight : 1080}`}
         onClick={step?.waitForClick ? undefined : handleClick}
+        style={step?.waitForClick && !isTyping ? { pointerEvents: 'none' } : undefined}
       >
         <defs>
           <mask id="guide-mask">
