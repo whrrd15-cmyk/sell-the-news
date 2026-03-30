@@ -154,7 +154,7 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   const currentGlobalStep = CHAPTERS.slice(0, chapterIndex).reduce((s, c) => s + c.steps.length, 0) + stepIndex + 1
 
   // 캐릭터 이미지 (mood에 따라)
-  const characterImg = '/characters/mentor-south.png'
+  const characterImg = '/characters/mentor-hd/rotations/south.png'
 
   // 페이지 네비게이트
   useEffect(() => {

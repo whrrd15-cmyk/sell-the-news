@@ -305,7 +305,7 @@ export function OnboardingScreen() {
       {/* ─── 픽셀 캐릭터 ─── */}
       <div className="onboarding-character">
         <img
-          src="/characters/mentor-south.png"
+          src="/characters/mentor-hd/rotations/south.png"
           alt="Mentor"
           className="onboarding-character-img"
           style={{ imageRendering: 'pixelated' }}
