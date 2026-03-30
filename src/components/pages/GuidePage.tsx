@@ -1,258 +1,233 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
+import { SFX } from '../../utils/sound'
 
 /**
- * 인게임 가이드 메뉴
+ * 인게임 가이드 — 대화 형식
  *
- * 기존 스포트라이트 튜토리얼과 동일한 디자인 언어 사용:
- * - 골드 테두리 + 글로우
- * - 타이핑 느낌의 텍스트
- * - 어두운 반투명 배경
- *
- * 유저가 언제든 사이드바에서 접근 가능.
- * 카테고리별로 정리된 상세 가이드.
+ * 온보딩과 동일한 대화 UI:
+ * - 선배(???) 캐릭터가 카테고리별로 설명
+ * - 타이핑 애니메이션 + 클릭으로 진행
+ * - 왼쪽 카테고리 목차 + 오른쪽 대화 뷰
  */
 
-interface GuideEntry {
-  id: string
-  title: string
-  content: string
-  tips?: string[]
+interface GuideLine {
+  speaker: string
+  text: string
 }
 
 interface GuideSection {
   id: string
-  icon: string
+  numeral: string
   title: string
   color: string
-  entries: GuideEntry[]
+  lines: GuideLine[]
 }
 
-const GUIDE_SECTIONS: GuideSection[] = [
+const GUIDE_DATA: GuideSection[] = [
   {
     id: 'basics',
-    icon: 'I',
+    numeral: 'I',
     title: '기본 규칙',
     color: '#f0b429',
-    entries: [
-      {
-        id: 'objective',
-        title: '게임 목표',
-        content: '당신은 증권사 인턴입니다. 8분기 동안 매 분기 목표 수익률을 달성해야 합니다. 1분기 목표는 5%로 낮지만, 분기가 올라갈수록 난이도가 치솟습니다.',
-        tips: ['목표 미달성 시 게임 오버', '8분기 모두 클리어하면 정규직 달성'],
-      },
-      {
-        id: 'time',
-        title: '시간 시스템',
-        content: '게임은 실시간으로 진행됩니다. 1분기 = 13주, 1주 = 약 70초(1배속 기준). 장 시간(9:00-16:00)에만 주가가 움직이고 거래할 수 있습니다.',
-        tips: ['일시정지(Pause) 중에도 뉴스 읽기와 분석 가능', '속도 조절: 1x / 2x / 4x'],
-      },
-      {
-        id: 'rp',
-        title: 'RP (평판 포인트)',
-        content: 'RP는 스킬과 아이템을 구매하는 화폐입니다. 매주 종료 시 기본 5RP + 보너스를 획득합니다.',
-        tips: ['보유 종목당 +1 RP (최대 5)', '주간 수익률 양수면 +3 RP', '가짜뉴스 회피 시 +2 RP'],
-      },
+    lines: [
+      { speaker: '???', text: '가이드를 찾아왔구나. 좋아, 필요한 것만 빠르게 알려줄게.' },
+      { speaker: '???', text: '넌 증권사 인턴이야. 8분기 동안 매 분기 목표 수익률을 달성해야 해.' },
+      { speaker: '???', text: '1분기 목표는 5%. 가볍지? 근데 뒤로 갈수록 장난 아니야.' },
+      { speaker: '???', text: '게임은 실시간이야. 1분기 = 13주, 1주 = 약 70초. 속도 조절은 HUD에서.' },
+      { speaker: '???', text: '장 시간은 9시~16시. 이 시간에만 주가가 움직이고 거래할 수 있어.' },
+      { speaker: '???', text: '일시정지 중에도 뉴스 읽기, 분석, 주문 설정은 가능해. 활용하라고.' },
+      { speaker: '???', text: 'RP는 평판 포인트. 스킬이랑 아이템 살 때 쓰는 화폐야.' },
+      { speaker: '???', text: '매주 기본 5RP + 보유 종목당 1RP + 수익 나면 3RP + 가짜뉴스 안 속으면 2RP.' },
+      { speaker: '???', text: '뭐, 기본은 이 정도야. 다른 거 궁금하면 왼쪽 목차에서 골라.' },
     ],
   },
   {
     id: 'trading',
-    icon: 'II',
+    numeral: 'II',
     title: '매매 가이드',
     color: '#5ec269',
-    entries: [
-      {
-        id: 'buy_sell',
-        title: '매수와 매도',
-        content: '종목을 선택하고 수량을 입력한 뒤 매수/매도 버튼을 누르세요. 25%, 50%, 전량 버튼으로 빠르게 수량을 설정할 수 있습니다.',
-        tips: ['거래 수수료 0.5% (환율 헤지 스킬 시 0.2%)', '매수 = 싸게 사서 비싸게 팔기', '매도 = 보유 주식 팔기'],
-      },
-      {
-        id: 'short',
-        title: '공매도',
-        content: '주가가 떨어질 것 같을 때 사용합니다. 주식을 빌려서 팔고, 나중에 싸게 사서 갚습니다. 공매도 스킬 언락 필요.',
-        tips: ['마진 150% 필요 (빌린 금액의 1.5배)', '주가 30% 이상 오르면 마진콜 (강제 청산)', '일일 대여료 0.02% 발생'],
-      },
-      {
-        id: 'leverage',
-        title: '레버리지',
-        content: '자기자본의 N배로 매수합니다. 수익도 N배, 손실도 N배. 레버리지 스킬 언락 필요.',
-        tips: ['2배: 청산가 = 매입가의 55%', '5배: 청산가 = 매입가의 82%', '10배: 청산가 = 매입가의 91%', '일일 이자 발생'],
-      },
-      {
-        id: 'orders',
-        title: '지정가 주문',
-        content: '미리 가격과 수량을 정해두면, 해당 가격에 도달했을 때 자동으로 체결됩니다.',
-        tips: ['지정가 매수: 목표가 이하에서 자동 매수', '지정가 매도: 목표가 이상에서 자동 매도', '손절매: 지정가 이하로 떨어지면 매도', '익절매: 지정가 이상이면 매도'],
-      },
-      {
-        id: 'sectors',
-        title: '섹터와 분산투자',
-        content: '종목은 5개 섹터(기술/에너지/금융/소비재/헬스케어)로 나뉩니다. 한 섹터에 집중하면 위험, 여러 섹터에 분산하면 안전합니다.',
-        tips: ['ETF = 섹터 평균을 추종하는 안전한 선택', '포트폴리오 헤지 스킬: 3섹터 이상 보유 시 손실 -20%'],
-      },
+    lines: [
+      { speaker: '???', text: '매매 얘기를 하자고? 좋아, 핵심만 짚어줄게.' },
+      { speaker: '???', text: '종목 선택 → 수량 입력 → 매수/매도. 25%, 50%, 전량 버튼으로 빠르게 설정해.' },
+      { speaker: '???', text: '거래 수수료는 0.5%. 환율 헤지 스킬 찍으면 0.2%로 줄어.' },
+      { speaker: '???', text: '공매도는... 주가가 떨어질 때 돈 버는 기법이야. 빌려서 팔고, 싸게 사서 갚는 거지.' },
+      { speaker: '???', text: '근데 공매도는 위험해. 마진 150% 필요하고, 주가 30% 오르면 강제 청산이야.' },
+      { speaker: '???', text: '레버리지는 자기자본의 N배로 매수하는 거야. 수익도 N배, 손실도 N배.' },
+      { speaker: '???', text: '2배 레버리지면 청산가가 매입가의 55%. 5배면 82%. 10배면 91%. 아찔하지?' },
+      { speaker: '???', text: '지정가 주문도 있어. 미리 가격 정해두면 자동으로 체결돼.' },
+      { speaker: '???', text: '손절매, 익절매도 지정가의 일종이야. 감정 배제하고 기계적으로 매매하는 거지.' },
+      { speaker: '???', text: '그리고 분산투자. 한 섹터에 몰빵하지 마. 5개 섹터에 나누면 리스크가 줄어.' },
+      { speaker: '???', text: '포트폴리오 헤지 스킬 찍으면 3섹터 이상 보유 시 손실 20% 감소야. 꿀이지.' },
     ],
   },
   {
     id: 'news',
-    icon: 'III',
+    numeral: 'III',
     title: '뉴스 읽기',
     color: '#5b9bd5',
-    entries: [
-      {
-        id: 'sources',
-        title: '뉴스 출처와 신뢰도',
-        content: '모든 뉴스가 진실은 아닙니다. 출처에 따라 신뢰도가 다릅니다.',
-        tips: ['공영방송/경제전문지: 신뢰도 높음', '애널리스트/내부자: 신뢰도 보통', 'SNS/익명 블로그: 신뢰도 낮음', '팩트체크 스킬로 등급 확인 가능'],
-      },
-      {
-        id: 'fake_news',
-        title: '가짜 뉴스 종류',
-        content: '시장에는 다양한 가짜 뉴스가 돌아다닙니다. 이를 구별하는 것이 핵심 능력입니다.',
-        tips: ['펌프앤덤프: 가격 올려놓고 팔기', 'FUD: 공포를 퍼뜨려 가격 낮추기', '루머: 확인되지 않은 소문', '뒷북 뉴스: 이미 반영된 오래된 정보'],
-      },
-      {
-        id: 'impact',
-        title: '뉴스의 시장 영향',
-        content: '뉴스는 특정 섹터에 영향을 줍니다. 뉴스 상세에서 예상 섹터 영향과 인과관계를 확인할 수 있습니다.',
-        tips: ['심층 뉴스 스킬: 실제 영향 vs 인지된 영향 비교', '체인 이벤트: 일부 뉴스는 후속 영향이 있음', '속보는 즉시 반응하되, 판단은 신중하게'],
-      },
-      {
-        id: 'noise',
-        title: '시장 소음',
-        content: '모든 뉴스가 시장에 영향을 주진 않습니다. 소음 뉴스를 걸러내는 것도 중요한 능력입니다.',
-        tips: ['노이즈 필터 스킬: 소음 뉴스 자동 식별', '뉴스 페이지에서 소음은 접기 가능 섹션에 표시'],
-      },
+    lines: [
+      { speaker: '???', text: '이 게임의 핵심이야. 뉴스를 얼마나 잘 읽느냐가 실력이거든.' },
+      { speaker: '???', text: '모든 뉴스가 진짜는 아니야. 출처에 따라 신뢰도가 달라.' },
+      { speaker: '???', text: '공영방송, 경제전문지 = 높음. 애널리스트 = 보통. SNS, 익명 블로그 = 낮음.' },
+      { speaker: '???', text: '가짜 뉴스 종류도 알아둬. 펌프앤덤프 — 가격 올려놓고 팔아버리는 수법.' },
+      { speaker: '???', text: 'FUD — 공포를 퍼뜨려서 가격을 떨구는 거야. 루머는 확인 안 된 소문이고.' },
+      { speaker: '???', text: '뒷북 뉴스는 이미 시장에 반영된 오래된 정보야. 이걸로 거래하면 늦어.' },
+      { speaker: '???', text: '뉴스 페이지에서 기사를 클릭하면 인과관계 분석이 나와. 출처→영향→예상 효과.' },
+      { speaker: '???', text: '심층 뉴스 스킬 찍으면 "인지된 영향"과 "실제 영향"의 차이를 볼 수 있어.' },
+      { speaker: '???', text: '일부 뉴스는 후속 영향이 있어. 체인 이벤트라고 하는데, 2-3일 후에 터져.' },
+      { speaker: '???', text: '소음 뉴스도 있어. 시장에 영향 없는 잡음이야. 이걸 걸러내는 것도 능력이지.' },
     ],
   },
   {
     id: 'social',
-    icon: 'IV',
+    numeral: 'IV',
     title: '여론과 경제지표',
     color: '#e88c3a',
-    entries: [
-      {
-        id: 'opinion',
-        title: 'SNS 여론',
-        content: '사회 탭에서 사람들의 게시글을 읽을 수 있습니다. 시장 분위기를 간접적으로 파악하는 데 도움이 됩니다.',
-        tips: ['여론이 항상 맞는 것은 아님', '루머와 팩트를 구분해야 함', '여론 분석 스킬: 루머 경고 표시'],
-      },
-      {
-        id: 'indicators',
-        title: '경제 지표',
-        content: 'GDP, 실업률, 기준금리, 물가 등 경제 지표가 표시됩니다. 이 숫자들이 시장에 어떤 영향을 주는지 스스로 판단해야 합니다.',
-        tips: ['금리 인상 = 보통 주가 하락', '실업률 상승 = 경기 둔화 신호', '제조업 PMI > 50 = 확장, < 50 = 위축'],
-      },
+    lines: [
+      { speaker: '???', text: '사회 탭에서 사람들 게시글을 볼 수 있어. 시장 분위기를 읽는 거지.' },
+      { speaker: '???', text: '근데 조심해. 여론이 항상 맞는 건 아니야. 루머도 섞여 있으니까.' },
+      { speaker: '???', text: '여론 분석 스킬 찍으면 루머인 게시글에 경고가 뜨긴 해.' },
+      { speaker: '???', text: '경제지표 탭도 봐. GDP, 실업률, 기준금리, 물가... 숫자가 나오는데,' },
+      { speaker: '???', text: '금리 인상은 보통 주가 하락. 실업률 상승은 경기 둔화 신호야.' },
+      { speaker: '???', text: '제조업 PMI가 50 넘으면 확장, 밑이면 위축이야. 기본이지.' },
+      { speaker: '???', text: '근데 이 숫자들의 해석은 네 몫이야. 나도 정답은 몰라.' },
     ],
   },
   {
     id: 'skills',
-    icon: 'V',
+    numeral: 'V',
     title: '스킬과 아이템',
     color: '#9b72cf',
-    entries: [
-      {
-        id: 'skill_system',
-        title: '스킬 시스템',
-        content: 'RP로 스킬을 언락하면 영구적으로 적용됩니다. 분석, 리터러시, 투자, 패시브 4개 카테고리가 있습니다.',
-        tips: ['일부 스킬은 선행 스킬 필요', '분석 스킬: 차트/뉴스 정보 강화', '투자 스킬: 공매도/레버리지/손절매 언락', '패시브 스킬: 수수료 감소/이자 강화'],
-      },
-      {
-        id: 'items',
-        title: '아이템',
-        content: '아이템은 일회용입니다. 상점에서 RP로 구매하고, 적절한 타이밍에 사용하세요.',
-        tips: ['비상자금: 현금 부족 시 $2,000 지급', '투자 보험: 손실 50% 보전', '변동성 방어막: 1주 최대 손실 -5% 제한'],
-      },
+    lines: [
+      { speaker: '???', text: '스킬은 RP로 사는 영구 업그레이드야. 한 번 찍으면 끝.' },
+      { speaker: '???', text: '분석 스킬은 차트/뉴스 정보를 강화해줘. 기술적 분석, 심층 뉴스 같은 거.' },
+      { speaker: '???', text: '리터러시 스킬은 가짜 뉴스 탐지력을 올려줘. 팩트체크, 출처 추적 등.' },
+      { speaker: '???', text: '투자 스킬은 공매도, 레버리지, 손절매 같은 거래 도구를 열어줘.' },
+      { speaker: '???', text: '패시브 스킬은 수수료 감소, 배당, 이자 강화 같은 자동 효과야.' },
+      { speaker: '???', text: '일부 스킬은 선행 스킬이 필요해. 스킬 트리를 잘 봐.' },
+      { speaker: '???', text: '아이템은 일회용이야. 상점에서 RP로 사고, 적절한 타이밍에 써.' },
+      { speaker: '???', text: '비상자금은 현금 부족할 때, 투자 보험은 손실 클 때, 변동성 방어막은...' },
+      { speaker: '???', text: '뭐, 이름 보면 대충 알 거야. 직접 써보면서 감 잡아.' },
+      { speaker: '???', text: '그럼 건투를 빌어, 인턴. 언제든 다시 와.' },
     ],
   },
 ]
 
 export function GuidePage() {
-  const [expandedSection, setExpandedSection] = useState<string | null>('basics')
-  const [selectedEntry, setSelectedEntry] = useState<string | null>(null)
+  const [selectedSection, setSelectedSection] = useState<string>('basics')
+  const [lineIndex, setLineIndex] = useState(0)
+  const [displayedText, setDisplayedText] = useState('')
+  const [isTyping, setIsTyping] = useState(true)
 
-  const currentSection = GUIDE_SECTIONS.find(s => s.id === expandedSection)
-  const currentEntry = currentSection?.entries.find(e => e.id === selectedEntry)
+  const section = GUIDE_DATA.find(s => s.id === selectedSection)!
+  const currentLine = section.lines[lineIndex]
+  const isLastLine = lineIndex >= section.lines.length - 1
+
+  // 타이핑 효과
+  useEffect(() => {
+    if (!currentLine) return
+    setIsTyping(true)
+    setDisplayedText('')
+    let i = 0
+    const interval = setInterval(() => {
+      if (i <= currentLine.text.length) {
+        setDisplayedText(currentLine.text.slice(0, i))
+        if (i > 0 && currentLine.text[i - 1] !== ' ') SFX.dialogueBlip()
+        i++
+      } else {
+        setIsTyping(false)
+        clearInterval(interval)
+      }
+    }, 25)
+    return () => clearInterval(interval)
+  }, [selectedSection, lineIndex])
+
+  const handleClick = useCallback(() => {
+    if (isTyping) {
+      // 타이핑 중 클릭 → 전체 표시
+      setDisplayedText(currentLine.text)
+      setIsTyping(false)
+      return
+    }
+    // 다음 대사
+    if (!isLastLine) {
+      setLineIndex(i => i + 1)
+    }
+  }, [isTyping, isLastLine, currentLine])
+
+  const handleSelectSection = useCallback((id: string) => {
+    setSelectedSection(id)
+    setLineIndex(0)
+  }, [])
 
   return (
     <div className="guide-page">
-      {/* 왼쪽: 목차 */}
+      {/* 왼쪽: 카테고리 목차 */}
       <div className="guide-toc">
         <div className="guide-toc-header">가이드</div>
-        {GUIDE_SECTIONS.map(section => (
-          <div key={section.id}>
-            <button
-              className={`guide-section-btn ${expandedSection === section.id ? 'guide-section-btn--active' : ''}`}
-              style={{ '--section-color': section.color } as React.CSSProperties}
-              onClick={() => {
-                setExpandedSection(expandedSection === section.id ? null : section.id)
-                setSelectedEntry(null)
-              }}
-            >
-              <span className="guide-section-icon">{section.icon}</span>
-              <span className="guide-section-title">{section.title}</span>
-              <span className="guide-section-arrow">{expandedSection === section.id ? '▼' : '▶'}</span>
-            </button>
-
-            <AnimatePresence>
-              {expandedSection === section.id && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="guide-entries"
-                >
-                  {section.entries.map(entry => (
-                    <button
-                      key={entry.id}
-                      className={`guide-entry-btn ${selectedEntry === entry.id ? 'guide-entry-btn--active' : ''}`}
-                      onClick={() => setSelectedEntry(entry.id)}
-                    >
-                      {entry.title}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+        {GUIDE_DATA.map(sec => (
+          <button
+            key={sec.id}
+            className={`guide-section-btn ${selectedSection === sec.id ? 'guide-section-btn--active' : ''}`}
+            style={{ '--section-color': sec.color } as React.CSSProperties}
+            onClick={() => handleSelectSection(sec.id)}
+          >
+            <span className="guide-section-icon">{sec.numeral}</span>
+            <span className="guide-section-title">{sec.title}</span>
+          </button>
         ))}
       </div>
 
-      {/* 오른쪽: 상세 내용 */}
-      <div className="guide-detail">
-        {currentEntry ? (
+      {/* 오른쪽: 대화 뷰 */}
+      <div className="guide-dialogue" onClick={handleClick}>
+        {/* 섹션 타이틀 */}
+        <div className="guide-dialogue-header" style={{ color: section.color }}>
+          {section.numeral}. {section.title}
+        </div>
+
+        {/* 대화 로그 (이전 대사들) */}
+        <div className="guide-dialogue-log">
+          {section.lines.slice(0, lineIndex).map((line, i) => (
+            <div key={i} className="guide-log-line">
+              <span className="guide-log-speaker">{line.speaker}</span>
+              <span className="guide-log-text">{line.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 현재 대사 (타이핑 중) */}
+        {currentLine && (
           <motion.div
-            key={currentEntry.id}
+            key={`${selectedSection}-${lineIndex}`}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="guide-detail-content"
+            className="guide-current-line"
           >
-            <div className="guide-detail-section-label" style={{ color: currentSection?.color }}>
-              {currentSection?.icon}. {currentSection?.title}
+            <div className="guide-current-speaker">{currentLine.speaker}</div>
+            <div className="guide-current-text">
+              {displayedText}
+              {isTyping && (
+                <motion.span
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.4, repeat: Infinity }}
+                  className="guide-cursor"
+                >_</motion.span>
+              )}
             </div>
-            <h2 className="guide-detail-title">{currentEntry.title}</h2>
-            <p className="guide-detail-text">{currentEntry.content}</p>
-
-            {currentEntry.tips && currentEntry.tips.length > 0 && (
-              <div className="guide-tips">
-                <div className="guide-tips-label">TIP</div>
-                {currentEntry.tips.map((tip, i) => (
-                  <div key={i} className="guide-tip-item">
-                    <span className="guide-tip-bullet">-</span>
-                    <span>{tip}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </motion.div>
-        ) : (
-          <div className="guide-detail-empty">
-            <div className="guide-detail-empty-icon">?</div>
-            <div className="guide-detail-empty-text">항목을 선택하세요</div>
-            <div className="guide-detail-empty-sub">왼쪽 목차에서 알고 싶은 내용을 클릭하세요</div>
-          </div>
         )}
+
+        {/* 하단 힌트 */}
+        <div className="guide-dialogue-hint">
+          {isTyping
+            ? '클릭하면 전체 표시'
+            : isLastLine
+              ? '왼쪽에서 다른 카테고리를 선택하세요'
+              : '클릭하면 계속 ▶'
+          }
+          <span className="guide-progress">{lineIndex + 1} / {section.lines.length}</span>
+        </div>
       </div>
     </div>
   )
