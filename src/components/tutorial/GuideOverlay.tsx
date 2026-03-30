@@ -290,47 +290,64 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         }} />
       )}
 
-      {/* 하단 대화 바 */}
-      <motion.div className="guide-bar" initial={{ y: 80 }} animate={{ y: 0 }} exit={{ y: 80 }}>
-        {/* 챕터 탭 */}
-        <div className="guide-bar-tabs">
-          {CHAPTERS.map((ch, i) => (
-            <button key={ch.id}
-              className={`guide-bar-tab ${chapterIndex === i ? 'guide-bar-tab--active' : ''} ${i < chapterIndex ? 'guide-bar-tab--done' : ''}`}
-              style={{ '--tab-color': ch.color } as React.CSSProperties}
-              onClick={() => handleChapterJump(i)}
-              title={ch.title}
-            >
-              {i < chapterIndex ? '~' : (i + 1)}
-            </button>
-          ))}
-        </div>
+      {/* 캐릭터: 하이라이트 대상 옆에서 걸어다니며 가리킴 */}
+      {hasTarget && (
+        <motion.div
+          className="guide-character"
+          animate={{
+            left: targetRect!.left - 70,
+            top: targetRect!.top + targetRect!.height / 2 - 40,
+          }}
+          transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+        >
+          <motion.img
+            src={characterImg}
+            alt=""
+            className="guide-character-img"
+            animate={{ y: [0, -3, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          />
+        </motion.div>
+      )}
 
-        {/* 캐릭터 */}
-        <div className="guide-bar-avatar">
-          <img src={characterImg} alt="" style={{ width: 40, height: 40, imageRendering: 'pixelated' }} />
+      {/* 대화 말풍선: 캐릭터 근처에 표시 */}
+      <motion.div
+        className="guide-speech-bubble"
+        onClick={handleClick}
+        animate={hasTarget ? {
+          left: Math.min(targetRect!.left + targetRect!.width + 16, window.innerWidth - 340),
+          top: Math.max(targetRect!.top - 10, 10),
+        } : { left: window.innerWidth / 2 - 160, top: window.innerHeight / 2 - 60 }}
+        transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+      >
+        <div className="guide-speech-chapter" style={{ color: chapter.color }}>{chapter.title}</div>
+        <div className="guide-speech-text">
+          {displayedText}
+          {isTyping && (
+            <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.4, repeat: Infinity }} style={{ color: '#f0b429' }}>_</motion.span>
+          )}
         </div>
-
-        {/* 대사 */}
-        <div className="guide-bar-dialogue" onClick={handleClick}>
-          <div className="guide-bar-chapter-label" style={{ color: chapter.color }}>{chapter.title}</div>
-          <div className="guide-bar-text">
-            {displayedText}
-            {isTyping && (
-              <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.4, repeat: Infinity }} className="guide-bar-cursor">_</motion.span>
-            )}
-          </div>
-          <div className="guide-bar-controls">
-            <span className="guide-bar-progress">{currentGlobalStep}/{totalSteps}</span>
-            {step?.waitForClick && !isTyping
-              ? <span className="guide-bar-wait-hint">직접 클릭하세요</span>
-              : !isTyping && <span className="guide-bar-next">클릭하면 계속</span>
-            }
-          </div>
+        <div className="guide-speech-controls">
+          <span className="guide-speech-progress">{currentGlobalStep}/{totalSteps}</span>
+          {step?.waitForClick && !isTyping
+            ? <span className="guide-speech-wait">직접 클릭하세요</span>
+            : !isTyping && <span className="guide-speech-next">클릭하면 계속</span>
+          }
         </div>
-
-        <button className="guide-bar-close" onClick={onClose}>닫기</button>
       </motion.div>
+
+      {/* 하단 챕터 바 (미니멀) */}
+      <div className="guide-chapter-bar">
+        {CHAPTERS.map((ch, i) => (
+          <button key={ch.id}
+            className={`guide-chapter-dot ${chapterIndex === i ? 'guide-chapter-dot--active' : ''} ${i < chapterIndex ? 'guide-chapter-dot--done' : ''}`}
+            style={{ '--dot-color': ch.color } as React.CSSProperties}
+            onClick={() => handleChapterJump(i)}
+            title={ch.title}
+          />
+        ))}
+        <button className="guide-chapter-close" onClick={onClose}>닫기</button>
+      </div>
     </>
   )
 }
