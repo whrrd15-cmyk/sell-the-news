@@ -303,33 +303,34 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         }} />
       )}
 
-      {/* 캐릭터: 하이라이트 대상 옆에서 걸어다니며 가리킴 */}
-      {hasTarget && (
-        <motion.div
-          className="guide-character"
-          animate={{
-            left: targetRect!.left - 100,
-            top: targetRect!.top + targetRect!.height / 2 - 64,
-          }}
-          transition={{ type: 'spring', stiffness: 120, damping: 18 }}
-        >
-          <motion.img
-            src={characterImg}
-            alt=""
-            className="guide-character-img"
-            animate={{ y: [0, -3, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          />
-        </motion.div>
-      )}
+      {/* 캐릭터: 하이라이트 대상 아래에 표시 (잘림 방지) */}
+      {hasTarget && (() => {
+        const charX = Math.max(60, Math.min(targetRect!.left + targetRect!.width / 2 - 64, window.innerWidth - 140))
+        const charY = Math.max(10, Math.min(targetRect!.bottom + 8, window.innerHeight - 200))
+        return (
+          <motion.div
+            className="guide-character"
+            animate={{ left: charX, top: charY }}
+            transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+          >
+            <motion.img
+              src={characterImg}
+              alt=""
+              className="guide-character-img"
+              animate={{ y: [0, -3, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            />
+          </motion.div>
+        )
+      })()}
 
-      {/* 대화 말풍선: 캐릭터 근처에 표시 */}
+      {/* 대화 말풍선: 캐릭터 옆에 표시 (잘림 방지 클램핑) */}
       <motion.div
         className="guide-speech-bubble"
         onClick={handleClick}
         animate={hasTarget ? {
-          left: Math.min(targetRect!.left + targetRect!.width + 16, window.innerWidth - 340),
-          top: Math.max(targetRect!.top - 10, 10),
+          left: Math.max(60, Math.min(targetRect!.left + targetRect!.width / 2 + 60, window.innerWidth - 340)),
+          top: Math.max(10, Math.min(targetRect!.bottom + 16, window.innerHeight - 160)),
         } : { left: window.innerWidth / 2 - 160, top: window.innerHeight / 2 - 60 }}
         transition={{ type: 'spring', stiffness: 120, damping: 18 }}
       >
