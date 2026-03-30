@@ -1,30 +1,26 @@
 /**
  * 사이드바 네비게이션
  *
- * 3개 페이지를 전환하는 왼쪽 고정 사이드바.
- * 유저가 능동적으로 정보를 찾아가는 구조를 만든다.
- *
- * 매매: 차트와 매매에 집중 (원시 정보만)
- * 뉴스: 기사를 읽고 분석 (유저가 직접 해석)
- * 분석: 시장 지표 확인 (유저가 필요할 때만)
+ * 3개 페이지 + 가이드 토글 버튼
  */
 
-export type PageId = 'trading' | 'news' | 'analysis' | 'guide'
+export type PageId = 'trading' | 'news' | 'analysis'
 
 interface SidebarNavProps {
   activePage: PageId
   onNavigate: (page: PageId) => void
   unreadNewsCount?: number
+  guideActive?: boolean
+  onToggleGuide?: () => void
 }
 
 const NAV_ITEMS: { id: PageId; icon: string; label: string; color: string }[] = [
   { id: 'trading', icon: '📊', label: '매매', color: '#5ec269' },
   { id: 'news', icon: '📰', label: '뉴스', color: '#5b9bd5' },
   { id: 'analysis', icon: '💬', label: '사회', color: '#e88c3a' },
-  { id: 'guide', icon: '?', label: '가이드', color: '#f0b429' },
 ]
 
-export function SidebarNav({ activePage, onNavigate, unreadNewsCount = 0 }: SidebarNavProps) {
+export function SidebarNav({ activePage, onNavigate, unreadNewsCount = 0, guideActive, onToggleGuide }: SidebarNavProps) {
   return (
     <nav className="sidebar-nav">
       {NAV_ITEMS.map(item => {
@@ -33,9 +29,7 @@ export function SidebarNav({ activePage, onNavigate, unreadNewsCount = 0 }: Side
           <button
             key={item.id}
             className={`sidebar-nav-item ${isActive ? 'sidebar-nav-item--active' : ''}`}
-            style={{
-              '--nav-color': item.color,
-            } as React.CSSProperties}
+            style={{ '--nav-color': item.color } as React.CSSProperties}
             onClick={() => onNavigate(item.id)}
             title={item.label}
           >
@@ -48,6 +42,20 @@ export function SidebarNav({ activePage, onNavigate, unreadNewsCount = 0 }: Side
           </button>
         )
       })}
+
+      {/* 가이드 토글 (하단에 분리) */}
+      <div style={{ marginTop: 'auto' }}>
+        <button
+          className={`sidebar-nav-item ${guideActive ? 'sidebar-nav-item--active' : ''}`}
+          style={{ '--nav-color': '#f0b429' } as React.CSSProperties}
+          onClick={onToggleGuide}
+          title="가이드"
+        >
+          <span className="sidebar-nav-icon">?</span>
+          <span className="sidebar-nav-label">가이드</span>
+          {guideActive && <span className="sidebar-nav-indicator" />}
+        </button>
+      </div>
     </nav>
   )
 }

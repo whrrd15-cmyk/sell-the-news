@@ -16,7 +16,7 @@ import { MarketConditionModal } from '../ui/MarketConditionModal'
 import { SidebarNav, type PageId } from './SidebarNav'
 import { NewsPage } from '../pages/NewsPage'
 import { SocialPage } from '../pages/SocialPage'
-import { GuidePage } from '../pages/GuidePage'
+import { GuideOverlay } from '../tutorial/GuideOverlay'
 import { BalatroBackground } from '../effects/BalatroBackground'
 import type { BackgroundMood } from '../effects/BalatroBackground'
 import { BalChip } from '../ui/BalChip'
@@ -183,6 +183,7 @@ export function TradingTerminal() {
   // ═══ 모달 ═══
   const [showMarketModal, setShowMarketModal] = useState(false)
   const [activePage, setActivePage] = useState<PageId>('trading')
+  const [guideOpen, setGuideOpen] = useState(false)
   const [toastNews, setToastNews] = useState<import('../../data/types').NewsCard | null>(null)
 
   // 새 임팩트 뉴스 도착 시 토스트
@@ -286,6 +287,8 @@ export function TradingTerminal() {
           activePage={activePage}
           onNavigate={setActivePage}
           unreadNewsCount={newsUnreadCount}
+          guideActive={guideOpen}
+          onToggleGuide={() => setGuideOpen(g => !g)}
         />
 
         {/* ═══ 메인 콘텐츠 ═══ */}
@@ -432,12 +435,15 @@ export function TradingTerminal() {
               />
             )}
 
-            {activePage === 'guide' && (
-              /* ════ 가이드 페이지 ════ */
-              <GuidePage />
-            )}
           </div>
         </div>
+
+        {/* ═══ 가이드 오버레이 ═══ */}
+        <GuideOverlay
+          isOpen={guideOpen}
+          onClose={() => setGuideOpen(false)}
+          onNavigate={setActivePage}
+        />
 
         {/* ═══ 뉴스 토스트 알림 ═══ */}
         <NewsToast

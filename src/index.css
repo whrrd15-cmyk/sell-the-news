@@ -2050,6 +2050,59 @@ body {
   border-left: 2px solid var(--color-bal-gold);
 }
 
+/* ═══════════════════════════════════════════
+   가이드 오버레이 (하이라이팅 + 하단 바)
+   ═══════════════════════════════════════════ */
+.guide-overlay-mask {
+  position: fixed; inset: 0; z-index: 80; pointer-events: auto; cursor: pointer;
+}
+.guide-highlight-border {
+  position: fixed; z-index: 81; pointer-events: none; border-radius: 10px;
+  border: 2px solid rgba(240,180,41,0.7);
+  box-shadow: 0 0 24px 4px rgba(240,180,41,0.25), inset 0 0 12px rgba(240,180,41,0.08);
+}
+.guide-bar {
+  position: fixed; bottom: 0; left: 52px; right: 0; z-index: 82;
+  background: rgba(15,15,30,0.92); border-top: 1px solid rgba(240,180,41,0.2);
+  backdrop-filter: blur(16px); display: flex; align-items: stretch;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+}
+.guide-bar-tabs {
+  display: flex; flex-direction: column; gap: 1px; padding: 4px;
+  border-right: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
+}
+.guide-bar-tab {
+  padding: 6px 12px; font-size: 10px; font-weight: 700; border-radius: 4px;
+  color: var(--color-bal-text-dim); cursor: pointer; transition: all 0.12s; white-space: nowrap;
+}
+.guide-bar-tab:hover { background: rgba(255,255,255,0.04); }
+.guide-bar-tab--active {
+  color: var(--tab-color); background: color-mix(in srgb, var(--tab-color) 12%, transparent);
+}
+.guide-bar-dialogue {
+  flex: 1; padding: 10px 16px; cursor: pointer; min-width: 0;
+}
+.guide-bar-speaker {
+  font-size: 10px; font-weight: 700; color: var(--color-bal-gold); margin-bottom: 3px;
+}
+.guide-bar-text {
+  font-size: 12px; color: var(--color-bal-text); line-height: 1.5; font-weight: 600;
+}
+.guide-bar-cursor { color: var(--color-bal-gold); }
+.guide-bar-controls {
+  display: flex; justify-content: space-between; margin-top: 4px;
+  font-size: 9px; color: var(--color-bal-text-dim); opacity: 0.5;
+}
+.guide-bar-progress { font-variant-numeric: tabular-nums; }
+.guide-bar-next { }
+.guide-bar-close {
+  padding: 0 16px; font-size: 10px; font-weight: 700; color: var(--color-bal-text-dim);
+  border-left: 1px solid rgba(255,255,255,0.06); cursor: pointer; transition: all 0.12s;
+  flex-shrink: 0;
+}
+.guide-bar-close:hover { color: var(--color-bal-text); background: rgba(255,255,255,0.04); }
+
+/* 레거시 가이드 페이지 (사용안함) */
 /* 대화 뷰 */
 .guide-dialogue {
   flex: 1; min-height: 0; display: flex; flex-direction: column;
