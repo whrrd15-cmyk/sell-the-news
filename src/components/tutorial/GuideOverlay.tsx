@@ -166,8 +166,36 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   const totalSteps = CHAPTERS.reduce((s, c) => s + c.steps.length, 0)
   const currentGlobalStep = CHAPTERS.slice(0, chapterIndex).reduce((s, c) => s + c.steps.length, 0) + stepIndex + 1
 
-  // 캐릭터 이미지 (mood에 따라)
-  const characterImg = '/characters/mentor-hd/rotations/south.png'
+  // 캐릭터 이미지: 타겟 방향에 따라 가리키는 방향 결정
+  const [animFrame, setAnimFrame] = useState(0)
+
+  // 가리키는 애니메이션 프레임 순환
+  useEffect(() => {
+    if (!isOpen) return
+    const interval = setInterval(() => {
+      setAnimFrame(f => (f + 1) % 6) // pushing은 6프레임
+    }, 200)
+    return () => clearInterval(interval)
+  }, [isOpen])
+
+  // 타겟 위치 기반 캐릭터 방향 결정
+  const getCharacterDirection = useCallback((): string => {
+    if (!targetRect) return 'south'
+    const charX = Math.max(60, Math.min(targetRect.left + targetRect.width / 2 - 64, window.innerWidth - 140))
+    const charY = Math.max(10, Math.min(targetRect.bottom + 8, window.innerHeight - 200))
+    const targetCenterX = targetRect.left + targetRect.width / 2
+    const targetCenterY = targetRect.top + targetRect.height / 2
+    const dx = targetCenterX - charX
+    const dy = targetCenterY - charY
+    // 타겟이 위에 있으면 north, 아래면 south, 좌우는 east/west
+    if (Math.abs(dy) > Math.abs(dx)) {
+      return dy < 0 ? 'north' : 'south'
+    }
+    return dx > 0 ? 'east' : 'west'
+  }, [targetRect])
+
+  const charDir = getCharacterDirection()
+  const characterImg = `/characters/mentor-hd/animations/pushing/${charDir}/frame_${String(animFrame).padStart(3, '0')}.png`
 
   // 페이지 네비게이트
   useEffect(() => {
