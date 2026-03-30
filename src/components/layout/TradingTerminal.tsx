@@ -294,7 +294,7 @@ export function TradingTerminal() {
         {/* ═══ 메인 콘텐츠 ═══ */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* ═══ HUD 바 (모든 페이지 공통) ═══ */}
-          <div className="trading-hud">
+          <div className="trading-hud" data-guide="hud">
             <div className="trading-hud-left">
               <BalChip color="gold" label="현금">${Math.floor(portfolio.cash).toLocaleString()}</BalChip>
               <BalChip color={isPositive ? 'green' : 'red'} label="수익률">
@@ -354,7 +354,7 @@ export function TradingTerminal() {
                 </div>
 
                 {/* 호가창 */}
-                <div className="trading-crt-panel" style={{ gridArea: 'book' }}>
+                <div className="trading-crt-panel" data-guide="orderbook" style={{ gridArea: 'book' }}>
                   <div className="trading-crt-label">호가</div>
                   <OrderBookPanel
                     currentPrice={currentPrice}
@@ -364,7 +364,7 @@ export function TradingTerminal() {
                 </div>
 
                 {/* 차트 */}
-                <div style={{ gridArea: 'chart' }}>
+                <div data-guide="chart" style={{ gridArea: 'chart' }}>
                   <BalPanel
                     label={selectedStock
                       ? `${selectedStock.ticker}  $${currentPrice.toFixed(0)}  ${priceChange >= 0 ? '▲' : '▼'}${(priceChange * 100).toFixed(1)}%`
@@ -385,7 +385,7 @@ export function TradingTerminal() {
                 </div>
 
                 {/* 주문서 (인라인 — 별도 패널 없음) */}
-                <div className="trading-order-area" style={{ gridArea: 'order' }}>
+                <div className="trading-order-area" data-guide="order" style={{ gridArea: 'order' }}>
                   <TradingPanel
                     stock={selectedStock} currentPrice={currentPrice} priceChange={priceChange}
                     portfolio={portfolio} position={selectedPosition}

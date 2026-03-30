@@ -1,24 +1,19 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { SFX } from '../../utils/sound'
 import type { PageId } from '../layout/SidebarNav'
 
 /**
- * 인게임 가이드 오버레이
+ * 인게임 가이드 오버레이 — ReactBits ElectricBorder/SpotlightCard 스타일 효과
  *
- * SpotlightTutorial과 동일한 하이라이팅 메카닉:
- * - SVG 마스크로 타겟 요소를 하이라이팅
- * - 골드 글로우 + 펄스 애니메이션
- *
- * 차이점:
- * - 별도 페이지가 아닌 현재 화면 위 오버레이
- * - 하단 대화 바 (fixed bottom)
- * - 카테고리 탭으로 섹션 전환
- * - 게임 UI에 영향 없음
+ * - 전기 보더: conic-gradient 회전으로 빛이 보더를 따라 흐름
+ * - 코너 라이트: 4코너 골드 점 깜빡임
+ * - 강화된 글로우: 48px 반경 + 이중 레이어
+ * - 내부 스캔라인: CRT 느낌 수평선 흐름
  */
 
 interface GuideStep {
-  target: string | null
+  target: string
   text: string
   page?: PageId
 }
@@ -38,7 +33,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     color: '#f0b429',
     page: 'trading',
     steps: [
-      { target: '[data-tutorial="asset-bar"]', text: '현금, 수익률, RP가 여기 표시돼. RP는 스킬이랑 아이템 살 때 쓰는 화폐야.' },
+      { target: '[data-guide="hud"]', text: '현금, 수익률, RP가 여기 표시돼. RP는 스킬이랑 아이템 살 때 쓰는 화폐야.' },
       { target: '.trading-time-display', text: '게임 시간이야. 장 시간(9시~16시)에만 주가가 움직이고 거래할 수 있어.' },
       { target: '.trading-speed-controls', text: '속도 조절. 일시정지 중에도 뉴스 읽기, 분석, 주문 설정은 가능해.' },
       { target: '.trading-quarter-bar', text: '분기 진행률이야. 13주가 지나면 분기가 끝나고 실적을 평가받아.' },
@@ -51,9 +46,9 @@ const GUIDE_SECTIONS: GuideSection[] = [
     page: 'trading',
     steps: [
       { target: '.stock-tab-bar', text: '종목 탭이야. 여기서 매매할 종목을 선택해. 5개 섹터 + ETF가 있어.' },
-      { target: '.trading-crt-panel', text: '호가창. 매수/매도 호가와 수량이 표시돼. 실제 거래소와 비슷한 구조야.' },
-      { target: '.trading-order-area', text: '주문서. 현물 매수/매도, 공매도, 레버리지, 지정가 주문을 여기서 해.' },
-      { target: '[style*="gridArea"][style*="chart"],.trading-page [style*="chart"]', text: '차트. 선택 종목의 주가 흐름이야. 캔들스틱 패턴을 읽는 것도 실력이지.' },
+      { target: '[data-guide="orderbook"]', text: '호가창. 매수/매도 호가와 수량이 표시돼. 실제 거래소와 비슷한 구조야.' },
+      { target: '[data-guide="order"]', text: '주문서. 현물 매수/매도, 공매도, 레버리지, 지정가 주문을 여기서 해.' },
+      { target: '[data-guide="chart"]', text: '차트. 선택 종목의 주가 흐름이야. 캔들스틱 패턴을 읽는 것도 실력이지.' },
     ],
   },
   {
@@ -62,10 +57,10 @@ const GUIDE_SECTIONS: GuideSection[] = [
     color: '#5b9bd5',
     page: 'news',
     steps: [
-      { target: '.news-v2-tabs', text: '카테고리별로 뉴스를 필터링할 수 있어. 정부, 경제, 기술, 지정학...' , page: 'news' },
-      { target: '.news-v2-body', text: '뉴스 목록이야. 속보는 크게, 일반은 작게, 소음은 접혀서 나와. 중요한 걸 골라 읽어.' , page: 'news' },
-      { target: null, text: '기사를 클릭하면 상세 + 인과관계 분석이 나와. 출처 신뢰도와 섹터 영향을 확인해.' },
-      { target: null, text: '가짜 뉴스에 주의해. 펌프앤덤프, FUD, 루머... 스킬을 찍으면 탐지력이 올라가.' },
+      { target: '.news-v2-tabs', text: '카테고리별로 뉴스를 필터링할 수 있어. 정부, 경제, 기술, 지정학...', page: 'news' },
+      { target: '.news-v2-body', text: '뉴스 목록이야. 속보는 크게, 일반은 작게, 소음은 접혀서 나와. 중요한 걸 골라 읽어.', page: 'news' },
+      { target: '.news-v2-body', text: '기사를 클릭하면 상세 + 인과관계 분석이 나와. 출처 신뢰도와 섹터 영향을 확인해.', page: 'news' },
+      { target: '.news-v2-tabs', text: '가짜 뉴스에 주의해. 펌프앤덤프, FUD, 루머... 스킬을 찍으면 탐지력이 올라가.', page: 'news' },
     ],
   },
   {
@@ -75,8 +70,8 @@ const GUIDE_SECTIONS: GuideSection[] = [
     page: 'analysis',
     steps: [
       { target: '.social-v2-tabs', text: '여론과 경제지표 탭이야. 사람들의 의견과 숫자를 읽고 시장을 판단해.', page: 'analysis' },
-      { target: null, text: 'SNS 여론이 항상 맞는 건 아니야. 루머도 섞여 있으니까 비판적으로 읽어.' },
-      { target: null, text: '경제지표의 해석은 네 몫이야. 금리, 실업률, GDP... 숫자가 의미하는 걸 생각해봐.' },
+      { target: '.social-v2-body', text: 'SNS 여론이 항상 맞는 건 아니야. 루머도 섞여 있으니까 비판적으로 읽어.', page: 'analysis' },
+      { target: '.social-v2-body', text: '경제지표의 해석은 네 몫이야. 금리, 실업률, GDP... 숫자가 의미하는 걸 생각해봐.', page: 'analysis' },
     ],
   },
 ]
@@ -115,7 +110,7 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   useEffect(() => {
     if (!isOpen) return
     const t = setTimeout(updateTarget, 300)
-    const interval = setInterval(updateTarget, 500)
+    const interval = setInterval(updateTarget, 400)
     return () => { clearTimeout(t); clearInterval(interval) }
   }, [isOpen, sectionIndex, stepIndex, updateTarget])
 
@@ -163,43 +158,53 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   if (!isOpen) return null
 
   const hasTarget = !!targetRect
-  const pad = 8
+  const pad = 10
 
   return (
     <>
-      {/* SVG 마스크 오버레이 (하이라이팅) */}
-      {hasTarget && (
-        <svg className="guide-overlay-mask" onClick={handleNext}>
-          <defs>
-            <mask id="guide-mask">
-              <rect width="100%" height="100%" fill="white" />
+      {/* 어두운 마스크 (타겟 있으면 구멍, 없으면 전체 암전) */}
+      <svg className="guide-overlay-mask" onClick={handleNext}>
+        <defs>
+          <mask id="guide-mask">
+            <rect width="100%" height="100%" fill="white" />
+            {hasTarget && (
               <rect
                 x={targetRect!.left - pad}
                 y={targetRect!.top - pad}
                 width={targetRect!.width + pad * 2}
                 height={targetRect!.height + pad * 2}
-                rx={10}
+                rx={12}
                 fill="black"
               />
-            </mask>
-          </defs>
-          <rect width="100%" height="100%" fill="rgba(0,0,0,0.6)" mask="url(#guide-mask)" />
-        </svg>
-      )}
+            )}
+          </mask>
+        </defs>
+        <rect width="100%" height="100%" fill="rgba(0,0,0,0.65)" mask="url(#guide-mask)" />
+      </svg>
 
-      {/* 골드 글로우 보더 */}
+      {/* 전기 보더 + 코너 라이트 + 글로우 */}
       {hasTarget && (
-        <motion.div
-          className="guide-highlight-border"
-          animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.02, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
+        <div
+          className="guide-electric-border"
           style={{
             left: targetRect!.left - pad,
             top: targetRect!.top - pad,
             width: targetRect!.width + pad * 2,
             height: targetRect!.height + pad * 2,
           }}
-        />
+        >
+          {/* 전기 보더: conic-gradient 회전 */}
+          <div className="guide-electric-spin" />
+          {/* 내부 배경 (마스크 역할) */}
+          <div className="guide-electric-inner" />
+          {/* 코너 라이트 4개 */}
+          <div className="guide-corner guide-corner--tl" />
+          <div className="guide-corner guide-corner--tr" />
+          <div className="guide-corner guide-corner--bl" />
+          <div className="guide-corner guide-corner--br" />
+          {/* 스캔라인 */}
+          <div className="guide-scanline" />
+        </div>
       )}
 
       {/* 하단 대화 바 */}
@@ -209,7 +214,6 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         animate={{ y: 0 }}
         exit={{ y: 80 }}
       >
-        {/* 카테고리 탭 */}
         <div className="guide-bar-tabs">
           {GUIDE_SECTIONS.map((sec, i) => (
             <button
@@ -223,7 +227,6 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
           ))}
         </div>
 
-        {/* 대사 영역 */}
         <div className="guide-bar-dialogue" onClick={handleNext}>
           <div className="guide-bar-speaker">???</div>
           <div className="guide-bar-text">
@@ -234,12 +237,11 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
           </div>
           <div className="guide-bar-controls">
             <span className="guide-bar-progress">{stepIndex + 1}/{section.steps.length}</span>
-            {!isTyping && !isLastStep && <span className="guide-bar-next">클릭 ▶</span>}
+            {!isTyping && !isLastStep && <span className="guide-bar-next">클릭하면 계속</span>}
             {!isTyping && isLastStep && <span className="guide-bar-next">다른 카테고리를 선택하세요</span>}
           </div>
         </div>
 
-        {/* 닫기 */}
         <button className="guide-bar-close" onClick={onClose}>닫기</button>
       </motion.div>
     </>
