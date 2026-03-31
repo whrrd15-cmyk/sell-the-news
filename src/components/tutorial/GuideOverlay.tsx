@@ -191,17 +191,26 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
     left: '/characters/mentor-hd/animations/point-right/south/frame_002.png',
     above: '/characters/mentor-hd/animations/point-down/south/frame_002.png',
   }
+  // idle 프레임 순환 (arms-crossed, breathing-idle)
+  const [idleFrame, setIdleFrame] = useState(0)
+  useEffect(() => {
+    if (!isOpen) return
+    const interval = setInterval(() => setIdleFrame(f => (f + 1) % 4), 250)
+    return () => clearInterval(interval)
+  }, [isOpen])
+
   // 포즈 결정: mood가 있으면 해당 포즈, 없으면 placement 기반 가리키기
   const MOOD_IMG: Record<string, string> = {
     celebrate: '/characters/mentor-hd/animations/fireball/south/frame_003.png',
     warning: '/characters/mentor-hd/animations/crouching/south/frame_002.png',
-    advice: '/characters/mentor-hd/animations/arms-crossed/south/frame_001.png',
+    advice: `/characters/mentor-hd/animations/arms-crossed/south/frame_${String(idleFrame).padStart(3, '0')}.png`,
   }
+  const idleImg = `/characters/mentor-hd/animations/arms-crossed/south/frame_${String(idleFrame).padStart(3, '0')}.png`
   const characterImg = step?.characterMood && MOOD_IMG[step.characterMood]
     ? MOOD_IMG[step.characterMood]
     : targetRect
       ? POSE_MAP[placement]
-      : '/characters/mentor-hd/animations/arms-crossed/south/frame_001.png'
+      : idleImg
 
   // 화살표 이미지 + 방향
   const ARROW_MAP: Record<Placement, { src: string; rotate: number }> = {

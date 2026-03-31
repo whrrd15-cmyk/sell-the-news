@@ -365,6 +365,14 @@
           "animations/custom-standing with arms crossed confidently, arms folde/south/frame_002.png",
           "animations/custom-standing with arms crossed confidently, arms folde/south/frame_003.png"
         ]
+      },
+      "custom-standing idle with both arms crossed over chest, h": {
+        "south": [
+          "animations/custom-standing idle with both arms crossed over chest, h/south/frame_000.png",
+          "animations/custom-standing idle with both arms crossed over chest, h/south/frame_001.png",
+          "animations/custom-standing idle with both arms crossed over chest, h/south/frame_002.png",
+          "animations/custom-standing idle with both arms crossed over chest, h/south/frame_003.png"
+        ]
       }
     }
   },
@@ -6575,7 +6583,8 @@
       ],
       "custom-standing still and pointing left with left arm ful_south": [],
       "custom-standing still and pointing downward with right ar_south": [],
-      "custom-standing with arms crossed confidently, arms folde_south": [
+      "custom-standing with arms crossed confidently, arms folde_south": [],
+      "custom-standing idle with both arms crossed over chest, h_south": [
         null,
         null,
         null,
@@ -6584,5 +6593,5 @@
     }
   },
   "export_version": "1.0",
-  "export_date": "2026-03-31T11:13:38.735525"
+  "export_date": "2026-03-31T15:07:50.070535"
 }
