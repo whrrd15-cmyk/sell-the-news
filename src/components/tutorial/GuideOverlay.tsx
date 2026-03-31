@@ -166,8 +166,28 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   const totalSteps = CHAPTERS.reduce((s, c) => s + c.steps.length, 0)
   const currentGlobalStep = CHAPTERS.slice(0, chapterIndex).reduce((s, c) => s + c.steps.length, 0) + stepIndex + 1
 
-  // 캐릭터: 항상 point-right 포즈 (우하단 고정이므로 왼쪽을 가리킴)
-  const characterImg = '/characters/mentor-hd/animations/breathing-idle/east/frame_000.png'
+  // 캐릭터 포즈: 타겟이 캐릭터의 어느 방향에 있는지에 따라 가리키기
+  const getCharacterImg = useCallback((): string => {
+    if (!targetRect) return '/characters/mentor-hd/animations/breathing-idle/south/frame_000.png'
+    // 캐릭터는 targetRect.left - 136 에 배치됨
+    const charCX = Math.max(56, targetRect.left - 136) + 64
+    const charCY = Math.max(10, Math.min(targetRect.top + targetRect.height / 2 - 64, window.innerHeight - 140)) + 64
+    const tCX = targetRect.left + targetRect.width / 2
+    const tCY = targetRect.top + targetRect.height / 2
+    const dx = tCX - charCX
+    const dy = tCY - charCY
+    // 4방향 중 가장 가까운 방향
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return dx > 0
+        ? '/characters/mentor-hd/animations/point-right/south/frame_002.png'
+        : '/characters/mentor-hd/animations/point-left/south/frame_002.png'
+    }
+    return dy < 0
+      ? '/characters/mentor-hd/animations/point-up/south/frame_002.png'
+      : '/characters/mentor-hd/animations/point-down/south/frame_002.png'
+  }, [targetRect])
+
+  const characterImg = getCharacterImg()
 
 
   // 페이지 네비게이트
