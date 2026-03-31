@@ -313,15 +313,7 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.75)" mask="url(#guide-mask)" />
       </svg>
 
-      {/* 골드 글로우 보더 */}
-      {hasTarget && (
-        <div className="guide-glow-border" style={{
-          left: targetRect!.left - pad, top: targetRect!.top - pad,
-          width: targetRect!.width + pad * 2, height: targetRect!.height + pad * 2,
-        }} />
-      )}
-
-      {/* 화살표: 타겟 아래 중앙에 단순 배치 */}
+      {/* 화살표: 타겟 아래 중앙에 배치 */}
       {hasTarget && (
         <motion.img
           src="/characters/arrow-down.png"
