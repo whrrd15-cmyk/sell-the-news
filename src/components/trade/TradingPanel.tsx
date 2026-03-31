@@ -48,11 +48,11 @@ interface TradingPanelProps {
   onRemoveAutoTradeRule: (id: string) => void
 }
 
-const TABS: { key: TradeTab; label: string; icon: string; color: string; skillRequired?: string }[] = [
-  { key: 'spot', label: '현물', icon: '💰', color: '#5ec269' },
-  { key: 'short', label: '공매도', icon: '📉', color: '#e8534a', skillRequired: 'short_selling' },
-  { key: 'leverage', label: '레버리지', icon: '🔥', color: '#e88c3a', skillRequired: 'leverage' },
-  { key: 'orders', label: '주문', icon: '📋', color: '#5b9bd5' },
+const TABS: { key: TradeTab; label: string; iconSrc: string; color: string; skillRequired?: string }[] = [
+  { key: 'spot', label: '현물', iconSrc: '/icons/tab-spot.png', color: '#5ec269' },
+  { key: 'short', label: '공매도', iconSrc: '/icons/tab-short.png', color: '#e8534a', skillRequired: 'short_selling' },
+  { key: 'leverage', label: '레버리지', iconSrc: '/icons/tab-leverage.png', color: '#e88c3a', skillRequired: 'leverage' },
+  { key: 'orders', label: '주문', iconSrc: '/icons/tab-orders.png', color: '#5b9bd5' },
 ]
 
 export function TradingPanel(props: TradingPanelProps) {
@@ -82,7 +82,7 @@ export function TradingPanel(props: TradingPanelProps) {
             }}
             onClick={() => setActiveTab(tab.key)}
           >
-            <span className="mr-0.5">{tab.icon}</span>
+            <img src={tab.iconSrc} alt="" style={{ width: 14, height: 14, imageRendering: 'pixelated', display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />
             {tab.label}
           </button>
         ))}
@@ -95,7 +95,8 @@ export function TradingPanel(props: TradingPanelProps) {
             title={`${tab.label} 스킬을 언락하세요`}
             disabled
           >
-            🔒 {tab.label}
+            <img src="/icons/tab-locked.png" alt="" style={{ width: 12, height: 12, imageRendering: 'pixelated', display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />
+            {tab.label}
           </button>
         ))}
       </div>

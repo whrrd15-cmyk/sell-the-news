@@ -1,7 +1,5 @@
 /**
- * 사이드바 네비게이션
- *
- * 3개 페이지 + 가이드 토글 버튼
+ * 사이드바 네비게이션 — 픽셀 아이콘
  */
 
 export type PageId = 'trading' | 'news' | 'analysis'
@@ -14,10 +12,10 @@ interface SidebarNavProps {
   onToggleGuide?: () => void
 }
 
-const NAV_ITEMS: { id: PageId; icon: string; label: string; color: string }[] = [
-  { id: 'trading', icon: '📊', label: '매매', color: '#5ec269' },
-  { id: 'news', icon: '📰', label: '뉴스', color: '#5b9bd5' },
-  { id: 'analysis', icon: '💬', label: '사회', color: '#e88c3a' },
+const NAV_ITEMS: { id: PageId; iconSrc: string; label: string; color: string }[] = [
+  { id: 'trading', iconSrc: '/icons/nav-trading.png', label: '매매', color: '#5ec269' },
+  { id: 'news', iconSrc: '/icons/nav-news.png', label: '뉴스', color: '#5b9bd5' },
+  { id: 'analysis', iconSrc: '/icons/nav-social.png', label: '사회', color: '#e88c3a' },
 ]
 
 export function SidebarNav({ activePage, onNavigate, unreadNewsCount = 0, guideActive, onToggleGuide }: SidebarNavProps) {
@@ -33,7 +31,7 @@ export function SidebarNav({ activePage, onNavigate, unreadNewsCount = 0, guideA
             onClick={() => onNavigate(item.id)}
             title={item.label}
           >
-            <span className="sidebar-nav-icon">{item.icon}</span>
+            <img src={item.iconSrc} alt="" className="sidebar-nav-pixel-icon" />
             <span className="sidebar-nav-label">{item.label}</span>
             {item.id === 'news' && unreadNewsCount > 0 && (
               <span className="sidebar-nav-badge">{unreadNewsCount}</span>
@@ -43,7 +41,6 @@ export function SidebarNav({ activePage, onNavigate, unreadNewsCount = 0, guideA
         )
       })}
 
-      {/* 가이드 토글 (하단에 분리) */}
       <div style={{ marginTop: 'auto' }}>
         <button
           className={`sidebar-nav-item ${guideActive ? 'sidebar-nav-item--active' : ''}`}
@@ -51,7 +48,7 @@ export function SidebarNav({ activePage, onNavigate, unreadNewsCount = 0, guideA
           onClick={onToggleGuide}
           title="가이드"
         >
-          <span className="sidebar-nav-icon">?</span>
+          <img src="/icons/nav-guide.png" alt="" className="sidebar-nav-pixel-icon" />
           <span className="sidebar-nav-label">가이드</span>
           {guideActive && <span className="sidebar-nav-indicator" />}
         </button>

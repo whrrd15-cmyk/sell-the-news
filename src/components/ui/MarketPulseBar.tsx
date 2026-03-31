@@ -19,10 +19,10 @@ interface MarketPulseBarProps {
 }
 
 const REGIME_CONFIG: Record<MarketCondition, { icon: string; label: string; color: string }> = {
-  bull_trend: { icon: '🐂', label: '상승장', color: '#5ec269' },
-  bear_market: { icon: '🐻', label: '하락장', color: '#e8534a' },
-  range_bound: { icon: '↔️', label: '박스권', color: '#e88c3a' },
-  neutral: { icon: '➖', label: '중립', color: '#8888aa' },
+  bull_trend: { iconSrc: '/icons/market-bull.png', label: '상승장', color: '#5ec269' },
+  bear_market: { iconSrc: '/icons/market-bear.png', label: '하락장', color: '#e8534a' },
+  range_bound: { iconSrc: '', label: '박스권', color: '#e88c3a' },
+  neutral: { iconSrc: '', label: '중립', color: '#8888aa' },
 }
 
 function getDominantCondition(conditions: Record<string, MarketCondition>): MarketCondition {
@@ -74,7 +74,10 @@ export function MarketPulseBar({
         onClick={onOpenConditionModal}
         title="섹터별 시장 상황 보기"
       >
-        <span className="market-pulse-regime-icon">{regime.icon}</span>
+        {regime.iconSrc
+          ? <img src={regime.iconSrc} alt="" style={{ width: 16, height: 16, imageRendering: 'pixelated' }} />
+          : <span className="market-pulse-regime-icon">{regime.label.slice(0, 1)}</span>
+        }
         <span className="market-pulse-regime-label" style={{ color: regime.color }}>{regime.label}</span>
       </button>
 

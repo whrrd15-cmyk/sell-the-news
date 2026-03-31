@@ -55,13 +55,13 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
   // Build item effects list
   const itemEffects: ItemEffect[] = []
   if (data.insuranceCompensation > 0) {
-    itemEffects.push({ icon: '🛡️', label: '손실보험', value: `+$${Math.floor(data.insuranceCompensation).toLocaleString()}`, color: 'blue' })
+    itemEffects.push({ icon: '/icons/fx-shield.png', label: '손실보험', value: `+$${Math.floor(data.insuranceCompensation).toLocaleString()}`, color: 'blue' })
   }
   if (data.rpDoubled) {
-    itemEffects.push({ icon: '⚡', label: 'RP 2배 적용', value: `${data.rpEarned}RP`, color: 'purple' })
+    itemEffects.push({ icon: '/icons/fx-bolt.png', label: 'RP 2배 적용', value: `${data.rpEarned}RP`, color: 'purple' })
   }
   if (data.dividendEarned > 0) {
-    itemEffects.push({ icon: '💎', label: '배당수익', value: `+$${Math.floor(data.dividendEarned).toLocaleString()}`, color: 'gold' })
+    itemEffects.push({ icon: '/icons/fx-gem.png', label: '배당수익', value: `+$${Math.floor(data.dividendEarned).toLocaleString()}`, color: 'gold' })
   }
 
   const advancePhase = useCallback((next: Phase) => {
@@ -245,7 +245,7 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
               animate={{ opacity: 1, scale: 1 }}
               className={`score-cascade-item score-cascade-item--${eff.color}`}
             >
-              <span className="score-cascade-item-icon">{eff.icon}</span>
+              <img src={eff.icon} alt="" style={{ width: 16, height: 16, imageRendering: 'pixelated' }} />
               <span className="score-cascade-item-label">{eff.label}</span>
               <span className="score-cascade-item-value">{eff.value}</span>
             </motion.div>
@@ -322,7 +322,7 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
             animate={{ opacity: 1, scale: 1 }}
             className="score-cascade-bonus"
           >
-            💰 이자 수익 +${data.interestEarned}
+            <img src="/icons/tab-spot.png" alt="" style={{ width: 14, height: 14, imageRendering: 'pixelated', display: 'inline', verticalAlign: 'middle' }} /> 이자 수익 +${data.interestEarned}
           </motion.div>
         )}
       </AnimatePresence>
@@ -335,7 +335,7 @@ export function ScoreCascade({ data, feedback, onComplete }: ScoreCascadeProps) 
             animate={{ opacity: 1, scale: 1 }}
             className="score-cascade-bonus score-cascade-bonus--rp"
           >
-            ⭐ +{data.rpEarned} RP
+            <img src="/icons/fx-star.png" alt="" style={{ width: 14, height: 14, imageRendering: 'pixelated', display: 'inline', verticalAlign: 'middle' }} /> +{data.rpEarned} RP
           </motion.div>
         )}
       </AnimatePresence>

@@ -340,6 +340,7 @@ body {
   border-color: color-mix(in srgb, var(--nav-color) 25%, transparent);
 }
 .sidebar-nav-icon { font-size: 16px; }
+.sidebar-nav-pixel-icon { width: 24px; height: 24px; image-rendering: pixelated; }
 .sidebar-nav-label {
   font-size: 8px;
   font-weight: 700;
