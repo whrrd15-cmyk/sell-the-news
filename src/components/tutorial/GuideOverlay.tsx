@@ -166,28 +166,88 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
   const totalSteps = CHAPTERS.reduce((s, c) => s + c.steps.length, 0)
   const currentGlobalStep = CHAPTERS.slice(0, chapterIndex).reduce((s, c) => s + c.steps.length, 0) + stepIndex + 1
 
-  // 캐릭터 포즈: 타겟이 캐릭터의 어느 방향에 있는지에 따라 가리키기
-  const getCharacterImg = useCallback((): string => {
-    if (!targetRect) return '/characters/mentor-hd/animations/breathing-idle/south/frame_000.png'
-    // 캐릭터는 targetRect.left - 136 에 배치됨
-    const charCX = Math.max(56, targetRect.left - 136) + 64
-    const charCY = Math.max(10, Math.min(targetRect.top + targetRect.height / 2 - 64, window.innerHeight - 140)) + 64
-    const tCX = targetRect.left + targetRect.width / 2
-    const tCY = targetRect.top + targetRect.height / 2
-    const dx = tCX - charCX
-    const dy = tCY - charCY
-    // 4방향 중 가장 가까운 방향
-    if (Math.abs(dx) > Math.abs(dy)) {
-      return dx > 0
-        ? '/characters/mentor-hd/animations/point-right/south/frame_002.png'
-        : '/characters/mentor-hd/animations/point-left/south/frame_002.png'
-    }
-    return dy < 0
-      ? '/characters/mentor-hd/animations/point-up/south/frame_002.png'
-      : '/characters/mentor-hd/animations/point-down/south/frame_002.png'
-  }, [targetRect])
+  // ═══ 스마트 배치: 타겟 주변 여유공간 분석 ═══
+  type Placement = 'below' | 'right' | 'left' | 'above'
 
-  const characterImg = getCharacterImg()
+  const calcPlacement = useCallback((rect: DOMRect): Placement => {
+    const spaceBottom = window.innerHeight - rect.bottom
+    const spaceRight = window.innerWidth - rect.right
+    const spaceLeft = rect.left - 52 // 사이드바 52px 제외
+    const spaceTop = rect.top
+
+    if (spaceBottom > 260) return 'below'
+    if (spaceRight > 360) return 'right'
+    if (spaceLeft > 200) return 'left'
+    if (spaceTop > 260) return 'above'
+    return 'below'
+  }, [])
+
+  const placement: Placement = targetRect ? calcPlacement(targetRect) : 'below'
+
+  // 캐릭터 포즈: placement에 따라
+  const POSE_MAP: Record<Placement, string> = {
+    below: '/characters/mentor-hd/animations/point-up/south/frame_002.png',
+    right: '/characters/mentor-hd/animations/point-left/south/frame_002.png',
+    left: '/characters/mentor-hd/animations/point-right/south/frame_002.png',
+    above: '/characters/mentor-hd/animations/point-down/south/frame_002.png',
+  }
+  const characterImg = targetRect ? POSE_MAP[placement] : '/characters/mentor-hd/animations/breathing-idle/south/frame_000.png'
+
+  // 화살표 이미지 + 방향
+  const ARROW_MAP: Record<Placement, { src: string; rotate: number }> = {
+    below: { src: '/characters/arrow-down.png', rotate: 180 }, // ▲ (위를 가리킴)
+    right: { src: '/characters/arrow-right.png', rotate: 180 }, // ◀ (왼쪽을 가리킴)
+    left: { src: '/characters/arrow-right.png', rotate: 0 }, // ▶ (오른쪽을 가리킴)
+    above: { src: '/characters/arrow-down.png', rotate: 0 }, // ▼ (아래를 가리킴)
+  }
+
+  // 캐릭터 좌표 계산
+  const getCharPos = useCallback(() => {
+    if (!targetRect) return { left: 70, top: window.innerHeight - 220 }
+    const r = targetRect
+    switch (placement) {
+      case 'below':
+        return { left: Math.max(56, r.left), top: r.bottom + 50 }
+      case 'right':
+        return { left: r.right + 16, top: Math.max(10, r.top + r.height / 2 - 64) }
+      case 'left':
+        return { left: Math.max(56, r.left - 140), top: Math.max(10, r.top + r.height / 2 - 64) }
+      case 'above':
+        return { left: Math.max(56, r.left), top: Math.max(10, r.top - 180) }
+    }
+  }, [targetRect, placement])
+
+  // 화살표 좌표 계산
+  const getArrowPos = useCallback(() => {
+    if (!targetRect) return { left: 0, top: 0 }
+    const r = targetRect
+    switch (placement) {
+      case 'below':
+        return { left: r.left + r.width / 2 - 20, top: r.bottom + 6 }
+      case 'right':
+        return { left: r.right + 4, top: r.top + r.height / 2 - 20 }
+      case 'left':
+        return { left: r.left - 44, top: r.top + r.height / 2 - 20 }
+      case 'above':
+        return { left: r.left + r.width / 2 - 20, top: r.top - 44 }
+    }
+  }, [targetRect, placement])
+
+  // 말풍선 좌표 계산
+  const getBubblePos = useCallback(() => {
+    if (!targetRect) return { left: window.innerWidth / 2 - 160, top: window.innerHeight / 2 }
+    const charPos = getCharPos()
+    switch (placement) {
+      case 'below':
+        return { left: Math.min(charPos.left + 140, window.innerWidth - 340), top: charPos.top }
+      case 'right':
+        return { left: Math.min(charPos.left, window.innerWidth - 340), top: Math.min(charPos.top + 136, window.innerHeight - 120) }
+      case 'left':
+        return { left: Math.max(56, charPos.left - 20), top: Math.min(charPos.top + 136, window.innerHeight - 120) }
+      case 'above':
+        return { left: Math.min(charPos.left + 140, window.innerWidth - 340), top: charPos.top }
+    }
+  }, [targetRect, placement, getCharPos])
 
 
   // 페이지 네비게이트
@@ -313,31 +373,35 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.75)" mask="url(#guide-mask)" />
       </svg>
 
-      {/* 화살표: 타겟 아래 중앙에 배치 */}
-      {hasTarget && (
-        <motion.img
-          src="/characters/arrow-down.png"
-          alt=""
-          className="guide-pixel-arrow"
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 0.7, repeat: Infinity }}
-          style={{
-            left: targetRect!.left + targetRect!.width / 2 - 20,
-            top: targetRect!.bottom + 6,
-          }}
-        />
-      )}
+      {/* 화살표: placement 방향으로 배치 */}
+      {hasTarget && (() => {
+        const arrowPos = getArrowPos()
+        const arrowInfo = ARROW_MAP[placement]
+        const bounceAxis = (placement === 'left' || placement === 'right') ? 'x' : 'y'
+        const bounceVal = (placement === 'left' || placement === 'above') ? -8 : 8
+        return (
+          <motion.img
+            src={arrowInfo.src}
+            alt=""
+            className="guide-pixel-arrow"
+            animate={bounceAxis === 'x' ? { x: [0, bounceVal, 0] } : { y: [0, bounceVal, 0] }}
+            transition={{ duration: 0.7, repeat: Infinity }}
+            style={{
+              left: arrowPos.left,
+              top: arrowPos.top,
+              transform: arrowInfo.rotate ? `rotate(${arrowInfo.rotate}deg)` : undefined,
+            }}
+          />
+        )
+      })()}
 
-      {/* 캐릭터: 하이라이트 왼쪽에 붙임 */}
+      {/* 캐릭터: placement에 따라 배치 */}
       {(() => {
-        const charLeft = hasTarget ? Math.max(56, targetRect!.left - 136) : 70
-        const charTop = hasTarget
-          ? Math.max(10, Math.min(targetRect!.top + targetRect!.height / 2 - 64, window.innerHeight - 140))
-          : window.innerHeight - 220
+        const pos = getCharPos()
         return (
           <motion.div
             className="guide-character"
-            animate={{ left: charLeft, top: charTop }}
+            animate={{ left: pos.left, top: pos.top }}
             transition={{ type: 'spring', stiffness: 100, damping: 16 }}
           >
             <motion.img
@@ -351,19 +415,11 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
         )
       })()}
 
-      {/* 말풍선: 하이라이트 아래에 배치, 캐릭터와 겹치지 않게 */}
+      {/* 말풍선: placement에 따라 배치 */}
       <motion.div
         className="guide-speech-bubble"
         onClick={handleClick}
-        animate={hasTarget ? {
-          left: Math.max(56, Math.min(targetRect!.left - 60, window.innerWidth - 340)),
-          top: Math.min(
-            hasTarget && targetRect!.top + targetRect!.height / 2 + 80 < window.innerHeight - 120
-              ? targetRect!.top + targetRect!.height / 2 + 80
-              : window.innerHeight - 130,
-            window.innerHeight - 100
-          ),
-        } : { left: window.innerWidth / 2 - 160, top: window.innerHeight / 2 }}
+        animate={getBubblePos()}
         transition={{ type: 'spring', stiffness: 100, damping: 16 }}
       >
         <div className="guide-speech-chapter" style={{ color: chapter.color }}>{chapter.title}</div>
