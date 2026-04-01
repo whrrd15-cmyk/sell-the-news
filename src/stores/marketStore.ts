@@ -4,6 +4,7 @@ import { tickMarket, applyNewsEffect as applyNewsEffectPure, type MarketState, c
 import { detectSectorConditions } from '../engine/marketCondition'
 import type { ClockEvent } from '../engine/clock'
 import type { RunConfig } from '../data/types'
+import { useMacroStore } from './macroStore'
 
 interface RealtimeMarketState {
   market: MarketState
@@ -39,16 +40,21 @@ export const useMarketStore = create<RealtimeMarketState>((set, get) => ({
     let updated = market
     let needsConditionUpdate = false
 
+    // 거시경제 효과 읽기
+    const macroState = useMacroStore.getState()
+    const macroEffects = macroState.sectorMacroEffects
+
     for (const event of events) {
       switch (event.type) {
         case 'TICK':
-          updated = tickMarket(updated, tickCount, dangerLevel, currentWeeklyRule)
+          updated = tickMarket(updated, tickCount, dangerLevel, currentWeeklyRule, macroEffects)
           break
         case 'DAY_END':
-          // 일 종료: 버블/패닉 업데이트는 tickMarket 내부에서 처리
           needsConditionUpdate = true
           break
         case 'WEEK_END':
+          // 거시경제 주간 업데이트
+          macroState.advanceWeek(tickCount, tickCount)
           needsConditionUpdate = true
           break
       }

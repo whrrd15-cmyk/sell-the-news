@@ -1,5 +1,6 @@
 import type { Stock, ActiveEffect, RunConfig, PriceHistory, WeeklyRule } from '../data/types'
 import { STOCKS } from '../data/stocks'
+import { calculateContagion } from './macroEconomy'
 
 /**
  * 주가 시뮬레이션 엔진
@@ -35,6 +36,7 @@ export interface PriceChangeBreakdown {
   noise: number             // 랜덤 노이즈
   bubblePop: number         // 버블 붕괴
   flashCrash: number        // 플래시 크래시
+  macroEffect: number       // 거시경제 효과
   totalChange: number       // 최종 변동률
 }
 
@@ -178,6 +180,7 @@ export function simulateTurn(
   config: RunConfig,
   turn: number,
   weeklyRule?: WeeklyRule | null,
+  macroEffects?: Record<string, number>,
 ): SimulateTurnResult {
   const rng = seededRandom(turn * 7919 + config.runNumber * 31)
   const newPrices: Record<string, number> = { ...state.prices }
@@ -272,7 +275,10 @@ export function simulateTurn(
       weeklyVolMult *
       0.03
 
-    let changeRate = trendEffect + eventEffect + momentum + herdEffect + meanReversion + noise
+    // 거시경제 효과 (금리, 환율, 유가 등)
+    const macroEff = macroEffects?.[stock.sector] ?? 0
+
+    let changeRate = trendEffect + eventEffect + momentum + herdEffect + meanReversion + noise + macroEff
 
     // 주간 규칙: 더블 오어 낫싱
     if (weeklyDoubleRate) changeRate *= 2
@@ -304,6 +310,7 @@ export function simulateTurn(
       noise,
       bubblePop: bubblePopVal,
       flashCrash: flashCrashVal,
+      macroEffect: macroEff,
       totalChange: changeRate,
     })
     const roundedPrice = Math.round(newPrice * 100) / 100
@@ -473,6 +480,7 @@ export function tickMarket(
   tickCount: number,
   dangerLevel: number,
   weeklyRule?: WeeklyRule | null,
+  macroEffects?: Record<string, number>,
 ): MarketState {
   const rng = seededRandom(tickCount * 7919 + 31)
   const newPrices: Record<string, number> = { ...state.prices }
@@ -528,8 +536,16 @@ export function tickMarket(
     const dangerNoise = baseNoise * (1 + dangerLevel * 0.8)
     const noise = dangerNoise * weeklyVolMult
 
+    // 거시경제 효과 (주간 효과를 ~700틱에 걸쳐 분배)
+    const macroTick = (macroEffects?.[stock.sector] ?? 0) / 700
+
+    // 교차 섹터 전이 (금융 폭락 → 타 섹터 전파, 매 50틱마다 갱신)
+    const contagionEffect = tickCount % 50 === 0
+      ? (calculateContagion(newMomentum)[stock.sector] ?? 0) * 0.01
+      : 0
+
     // 합산
-    let totalChange = trendEffect + eventEffect + rawMomentum + herdEffect + meanReversion + noise
+    let totalChange = trendEffect + eventEffect + rawMomentum + herdEffect + meanReversion + noise + macroTick + contagionEffect
 
     // 더블 오어 낫싱
     if (weeklyRule?.effect.type === 'double_or_nothing') totalChange *= 2

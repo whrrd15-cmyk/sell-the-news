@@ -301,12 +301,6 @@ body {
   content: ''; position: absolute; inset: 0;
   background: radial-gradient(ellipse at center, rgba(240,180,41,0.06) 0%, transparent 70%);
 }
-.loading-character { position: relative; z-index: 1; margin-bottom: 8px; }
-.loading-character-img {
-  width: 96px; height: 96px; image-rendering: pixelated;
-  filter: drop-shadow(0 0 16px rgba(240,180,41,0.3));
-  animation: character-bob 2s ease-in-out infinite;
-}
 .loading-title {
   font-size: 28px; font-weight: 800; color: var(--color-bal-gold);
   letter-spacing: 6px; text-shadow: 0 0 20px rgba(240,180,41,0.3);
@@ -342,12 +336,12 @@ body {
 /* ─── 로딩 화면: 실시간 주가 수신 보드 ─── */
 .loading-stock-board {
   position: relative; z-index: 1;
-  width: 340px; display: flex; flex-direction: column; gap: 2px;
+  width: 400px; display: flex; flex-direction: column; gap: 2px;
   background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
   border-radius: 6px; padding: 6px 0; margin: 4px 0;
 }
 .loading-stock-row {
-  display: grid; grid-template-columns: 40px 80px 1fr 60px;
+  display: grid; grid-template-columns: 40px 84px 1fr 60px;
   align-items: center; gap: 4px; padding: 3px 10px;
   opacity: 0; transform: translateX(-10px);
   transition: opacity 0.3s ease, transform 0.3s ease, background 0.3s ease;
@@ -365,9 +359,8 @@ body {
 .loading-stock-ticker {
   color: var(--color-bal-gold); font-weight: 700; letter-spacing: 0.5px;
 }
-.loading-stock-name {
-  color: var(--color-bal-text-dim); font-size: 9px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.loading-stock-sparkline {
+  display: flex; align-items: center; height: 20px;
 }
 .loading-stock-price {
   color: var(--color-bal-text); font-weight: 700; text-align: right;

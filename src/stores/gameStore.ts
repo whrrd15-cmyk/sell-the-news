@@ -28,6 +28,7 @@ import { loadMetaProgress, saveMetaProgress, getStartingCashBonus, getStartingRP
 import { writeSaveData, deleteSaveData, type SaveData } from '../utils/save'
 import { generateShopItems } from '../data/items'
 import { STOCKS } from '../data/stocks'
+import { useMacroStore } from './macroStore'
 import { detectSectorConditions } from '../engine/marketCondition'
 import { processAutoTrades } from '../engine/autoTrade'
 
@@ -72,6 +73,7 @@ interface GameState {
   revealedBestStockId: string | null
   predictions: Record<string, 'up' | 'down'> | null
   lastTrade: { stockId: string; type: 'buy' | 'sell'; amount: number; price: number; prevPosition: { shares: number; avgBuyPrice: number } | null } | null
+  lastTradeError: string | null
   tradesThisTurn: number
   visitedShopThisTurn: boolean
 
@@ -191,6 +193,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   revealedBestStockId: null,
   predictions: null,
   lastTrade: null,
+  lastTradeError: null,
   tradesThisTurn: 0,
   visitedShopThisTurn: false,
   usedQuizIds: new Set<string>(),
@@ -275,6 +278,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       revealedBestStockId: null,
       predictions: null,
       lastTrade: null,
+      lastTradeError: null,
       tradesThisTurn: 0,
       visitedShopThisTurn: false,
       usedQuizIds: new Set(),
@@ -346,13 +350,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     const tradeLimit = unlockedSkills.includes('double_trade') ? 2 : 1
     if (tradesThisTurn >= tradeLimit) return
     const price = market.prices[stockId]
-    if (!price) return
+    if (price == null || price <= 0) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
     const feeReduction = unlockedSkills.includes('forex_hedge') ? 0.003 : 0
     const newPortfolio = buyStock(portfolio, stockId, price, amount, feeReduction)
+    // 매매 실패 감지: buyStock은 잔액 부족/수량 0일 때 원본 반환
+    if (newPortfolio === portfolio) {
+      set({ lastTradeError: '잔액이 부족하거나 매수 수량이 없습니다.' })
+      return
+    }
     set({
       portfolio: newPortfolio,
       tradesThisTurn: tradesThisTurn + 1,
+      lastTradeError: null,
       lastTrade: {
         stockId, type: 'buy', amount, price,
         prevPosition: prevPosition ? { shares: prevPosition.shares, avgBuyPrice: prevPosition.avgBuyPrice } : null,
@@ -367,13 +377,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     const tradeLimit = unlockedSkills.includes('double_trade') ? 2 : 1
     if (tradesThisTurn >= tradeLimit) return
     const price = market.prices[stockId]
-    if (!price) return
+    if (price == null || price <= 0) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
     const feeReduction = unlockedSkills.includes('forex_hedge') ? 0.003 : 0
     const newPortfolio = sellStock(portfolio, stockId, price, shares, feeReduction)
+    // 매매 실패 감지: sellStock은 미보유/수량 0일 때 원본 반환
+    if (newPortfolio === portfolio) {
+      set({ lastTradeError: '보유 수량이 부족합니다.' })
+      return
+    }
     set({
       portfolio: newPortfolio,
       tradesThisTurn: tradesThisTurn + 1,
+      lastTradeError: null,
       lastTrade: {
         stockId, type: 'sell', amount: shares, price,
         prevPosition: prevPosition ? { shares: prevPosition.shares, avgBuyPrice: prevPosition.avgBuyPrice } : null,
@@ -429,7 +445,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       updatedMarket = { ...updatedMarket, panicLevel: 0 }
     }
 
-    const simResult = simulateTurn(updatedMarket, runConfig, turn, currentWeeklyRule)
+    const macroEffects = useMacroStore.getState().sectorMacroEffects
+    const simResult = simulateTurn(updatedMarket, runConfig, turn, currentWeeklyRule, macroEffects)
     const newMarket = simResult.state
 
     // 캐스케이드: 종목별 가격 변화
@@ -723,6 +740,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       revealedBestStockId: bestStockId,
       predictions: null,
       lastTrade: null,
+      lastTradeError: null,
       tradesThisTurn: 0,
       visitedShopThisTurn: false,
       currentWeeklyRule: weeklyRule,
@@ -1199,6 +1217,8 @@ function autoSave(state: GameState): void {
     stats: state.stats,
     usedEventIds: Array.from(state.usedEventIds),
     usedSpecialEventIds: Array.from(state.usedSpecialEventIds),
+    macro: useMacroStore.getState().macro,
+    prevMacro: useMacroStore.getState().prevMacro,
     timestamp: Date.now(),
   }
   writeSaveData(data)

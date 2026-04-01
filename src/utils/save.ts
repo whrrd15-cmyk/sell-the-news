@@ -27,6 +27,8 @@ export interface SaveData {
   usedSpecialEventIds: string[]
   equippedCursedItems?: { id: string; effect: string }[]
   usedWeeklyRuleIds?: string[]
+  macro?: unknown  // MacroEconomyState — optional for backward compat
+  prevMacro?: unknown
   timestamp: number
 }
 

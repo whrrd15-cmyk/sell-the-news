@@ -46,6 +46,9 @@ interface TradingPanelProps {
   autoTradeRules: AutoTradeRule[]
   onAddAutoTradeRule: (rule: AutoTradeRule) => void
   onRemoveAutoTradeRule: (id: string) => void
+  // 거래 횟수 제한
+  tradesRemaining?: number
+  tradeLimit?: number
 }
 
 const TABS: { key: TradeTab; label: string; iconSrc: string; color: string; skillRequired?: string }[] = [
@@ -113,8 +116,8 @@ export function TradingPanel(props: TradingPanelProps) {
             phase="investment"
             onBuy={props.onBuy}
             onSell={props.onSell}
-            tradesRemaining={99}
-            tradeLimit={99}
+            tradesRemaining={props.tradesRemaining ?? 99}
+            tradeLimit={props.tradeLimit ?? 99}
             unlockedSkills={props.unlockedSkills}
             stockCondition={props.stockCondition}
             autoTradeRules={props.autoTradeRules}

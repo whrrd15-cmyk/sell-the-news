@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { generateSocialPosts, type SocialPost } from '../../engine/social'
-import { generateIndicators, type EconomicIndicator } from '../../engine/indicators'
+import { deriveIndicatorsFromMacro, type EconomicIndicator } from '../../engine/indicators'
+import { useMacroStore } from '../../stores/macroStore'
 import { AvatarIcon, HeartIcon, CommentIcon, ShareIcon, ChatBubbleIcon, ChartBarIcon, LightbulbIcon } from '../icons/SocialIcons'
 
 /**
@@ -30,9 +31,10 @@ export function SocialPage({ herdSentiment, panicLevel, tickCount, runNumber, we
     generateSocialPosts(herdSentiment, panicLevel, Math.floor(tickCount / 10) * 10, 12),
   [herdSentiment, panicLevel, Math.floor(tickCount / 10)])
 
+  const { macro, prevMacro } = useMacroStore()
   const indicators = useMemo(() =>
-    generateIndicators(runNumber, week, marketTrend),
-  [runNumber, week, marketTrend])
+    macro && prevMacro ? deriveIndicatorsFromMacro(macro, prevMacro) : [],
+  [macro, prevMacro])
 
   return (
     <div className="social-v2">

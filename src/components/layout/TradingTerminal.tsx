@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react'
 import { useTimeStore } from '../../stores/timeStore'
 import { useMarketStore } from '../../stores/marketStore'
+import { useMacroStore } from '../../stores/macroStore'
 import { useGameStore } from '../../stores/gameStore'
 import { STOCKS } from '../../data/stocks'
 import { getPortfolioValue, getTotalReturn } from '../../engine/portfolio'
@@ -60,6 +61,7 @@ export function TradingTerminal() {
   const rtConditions = useMarketStore(s => s.marketConditions)
   const handleClockEvents = useMarketStore(s => s.handleClockEvents)
   const initializeMarket = useMarketStore(s => s.initialize)
+  const initializeMacro = useMacroStore(s => s.initialize)
 
   const dripNews = useNewsStore(s => s.publishedNews)
   const newsFreshness = useNewsStore(s => s.freshness)
@@ -84,6 +86,7 @@ export function TradingTerminal() {
   useEffect(() => {
     if (!initialized.current && runConfig) {
       initializeMarket(runConfig)
+      initializeMacro(runConfig)
       generateWeekPool(1, runConfig, null)
       // pickedStockId가 있으면 자동 선택
       if (pickedStockId && !selectedStockId) {
@@ -91,7 +94,7 @@ export function TradingTerminal() {
       }
       initialized.current = true
     }
-  }, [runConfig, initializeMarket, generateWeekPool, pickedStockId, selectedStockId, selectStock])
+  }, [runConfig, initializeMarket, initializeMacro, generateWeekPool, pickedStockId, selectedStockId, selectStock])
 
   // ═══ BGM ═══
   useEffect(() => { bgm.crossFadeTo('game-main') }, [])
@@ -298,23 +301,16 @@ export function TradingTerminal() {
   const [loadingText, setLoadingText] = useState('')
 
   // ─── 종목 데이터 (로딩 중 실시간 수신 연출) ───
-  const STOCK_FEED = [
-    { ticker: 'PXT', name: 'PixelTech', base: 150.00, sector: 'tech' },
-    { ticker: 'NSF', name: 'NeonSoft', base: 85.00, sector: 'tech' },
-    { ticker: 'GRP', name: 'GreenPower', base: 60.00, sector: 'energy' },
-    { ticker: 'OLM', name: 'OilMax', base: 45.00, sector: 'energy' },
-    { ticker: 'CBK', name: 'CryptoBank', base: 120.00, sector: 'finance' },
-    { ticker: 'SVT', name: 'SafeVault', base: 200.00, sector: 'finance' },
-    { ticker: 'FCH', name: 'FoodChain', base: 35.00, sector: 'consumer' },
-    { ticker: 'LXB', name: 'LuxBrand', base: 300.00, sector: 'consumer' },
-    { ticker: 'BGN', name: 'BioGen', base: 90.00, sector: 'healthcare' },
-    { ticker: 'MDC', name: 'MedCore', base: 70.00, sector: 'healthcare' },
-  ]
+  const STOCK_FEED = STOCKS.filter(s => !s.isETF).map(s => ({
+    id: s.id, ticker: s.ticker, name: s.name, base: s.basePrice, sector: s.sector,
+  }))
 
   // 종목이 하나씩 수신되는 상태
   const [receivedStocks, setReceivedStocks] = useState<number>(0)
   // 각 종목의 실시간 가격 변동
   const [livePrices, setLivePrices] = useState<Record<string, { price: number; change: number; flash: 'up' | 'down' | null }>>({})
+  // 스파크라인 포인트 진행 (히스토리 데이터를 점진적으로 표시)
+  const [sparklineProgress, setSparklineProgress] = useState(0)
 
   // 종목 하나씩 수신 (0.4초 간격)
   useEffect(() => {
@@ -376,6 +372,15 @@ export function TradingTerminal() {
     return () => clearTimeout(t)
   }, [livePrices])
 
+  // 스파크라인: 히스토리 포인트를 하나씩 드러냄
+  useEffect(() => {
+    if (loadingDone || receivedStocks < 1) return
+    const maxPoints = rtMarket?.priceHistories?.[0]?.prices?.length ?? 13
+    if (sparklineProgress >= maxPoints) return
+    const t = setTimeout(() => setSparklineProgress(n => n + 1), 250)
+    return () => clearTimeout(t)
+  }, [sparklineProgress, receivedStocks, loadingDone, rtMarket])
+
   // 전체 로딩 완료 판정: 모든 종목 수신 + 1초 대기
   useEffect(() => {
     if (loadingDone) return
@@ -414,24 +419,31 @@ export function TradingTerminal() {
       '장 개시 준비 완료'
     return (
       <div className="loading-screen">
-        <div className="loading-character">
-          <img src="/characters/mentor-hd/rotations/south.png" alt="" className="loading-character-img" />
-        </div>
         <div className="loading-title">SELL THE NEWS</div>
         <div className="loading-subtitle">{runConfig?.name ?? '시장'} — 장 개시 준비</div>
 
-        {/* 실시간 주가 수신 보드 */}
+        {/* 실시간 주가 수신 보드 + 미니 차트 */}
         <div className="loading-stock-board">
           {STOCK_FEED.map((stock, i) => {
             const live = livePrices[stock.ticker]
             const visible = i < receivedStocks
+            // 스파크라인 데이터: market 히스토리에서 점진적으로 표시
+            const history = rtMarket?.priceHistories?.find(h => h.stockId === stock.id)
+            const sparkData = history ? history.prices.slice(0, sparklineProgress) : []
+            // 현재 라이브 가격도 스파크라인 끝에 추가
+            if (live && sparkData.length > 0) sparkData.push(live.price)
+            const sparkColor = sparkData.length >= 2
+              ? (sparkData[sparkData.length - 1] >= sparkData[0] ? 'var(--color-bal-green)' : 'var(--color-bal-red)')
+              : 'var(--color-bal-text-dim)'
             return (
               <div
                 key={stock.ticker}
                 className={`loading-stock-row ${visible ? 'loading-stock-row--visible' : ''} ${live?.flash === 'up' ? 'loading-stock-flash-up' : ''} ${live?.flash === 'down' ? 'loading-stock-flash-down' : ''}`}
               >
                 <span className="loading-stock-ticker">{stock.ticker}</span>
-                <span className="loading-stock-name">{stock.name}</span>
+                <span className="loading-stock-sparkline">
+                  {visible && <LoadingSparkline data={sparkData} width={80} height={20} color={sparkColor} />}
+                </span>
                 <span className="loading-stock-price">
                   {live ? `$${live.price.toFixed(2)}` : '---'}
                 </span>
@@ -578,6 +590,8 @@ export function TradingTerminal() {
                     activeOrders={activeOrders} onCreateOrder={handleCreateOrder} onCancelOrder={handleCancelOrder}
                     unlockedSkills={unlockedSkills} stockCondition={selectedStockCondition}
                     autoTradeRules={autoTradeRules} onAddAutoTradeRule={addAutoTradeRule} onRemoveAutoTradeRule={removeAutoTradeRule}
+                    tradesRemaining={(unlockedSkills.includes('double_trade') ? 2 : 1) - tradesThisTurn}
+                    tradeLimit={unlockedSkills.includes('double_trade') ? 2 : 1}
                   />
                 </div>
 
@@ -664,5 +678,37 @@ export function TradingTerminal() {
         )}
       </div>
     </div>
+  )
+}
+
+// ═══ 로딩 화면 미니 스파크라인 ═══
+
+function LoadingSparkline({ data, width, height, color }: {
+  data: number[]
+  width: number
+  height: number
+  color: string
+}) {
+  if (data.length < 2) return <svg width={width} height={height} />
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const range = max - min || 1
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width
+    const y = height - ((v - min) / range) * (height - 2) - 1
+    return `${x},${y}`
+  }).join(' ')
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.8}
+      />
+    </svg>
   )
 }
