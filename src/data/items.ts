@@ -4,8 +4,8 @@ export const ITEMS: Item[] = [
   // ===== Common =====
   {
     id: 'hint_card',
-    name: '힌트 카드',
-    description: '다음 주 뉴스 1개의 진위를 미리 알려줍니다',
+    name: '애널리스트 노트',
+    description: '증권사 애널리스트의 비공개 종목 메모. 뉴스 1개의 진위를 미리 알려줍니다',
     rarity: 'common',
     cost: 10,
     isConsumable: true,
@@ -13,18 +13,17 @@ export const ITEMS: Item[] = [
   },
   {
     id: 'cash_boost_small',
-    name: '긴급 지원금',
-    description: '현재 포트폴리오의 5%를 현금으로 받습니다',
+    name: '마진콜 긴급대출',
+    description: '마진콜 직전 긴급 유동성 확보. 포트폴리오의 5%를 현금으로 수령',
     rarity: 'common',
     cost: 8,
     isConsumable: true,
     effect: 'cash_boost_percent',
   },
-  // 신규
   {
     id: 'emergency_fund',
-    name: '비상자금',
-    description: '현금이 $500 이하일 때 사용 가능. $2,000 즉시 지급',
+    name: 'CMA 긴급인출',
+    description: 'CMA 계좌에서 비상금 인출. 현금 $500 이하일 때 $2,000 즉시 지급',
     rarity: 'common',
     cost: 10,
     isConsumable: true,
@@ -34,8 +33,8 @@ export const ITEMS: Item[] = [
   // ===== Uncommon =====
   {
     id: 'insurance',
-    name: '투자 보험',
-    description: '다음 주 손실을 50%까지 보전합니다',
+    name: '풋옵션 헤지',
+    description: '풋옵션 매수로 하방 보호. 다음 주 손실을 50%까지 보전',
     rarity: 'uncommon',
     cost: 18,
     isConsumable: true,
@@ -43,8 +42,8 @@ export const ITEMS: Item[] = [
   },
   {
     id: 'double_rp',
-    name: 'RP 부스터',
-    description: '다음 주 획득 RP가 2배가 됩니다',
+    name: 'IR 미팅 참석',
+    description: '기업 IR 미팅 참석으로 신뢰도 2배 획득. 다음 주 RP 2배',
     rarity: 'uncommon',
     cost: 15,
     isConsumable: true,
@@ -52,18 +51,17 @@ export const ITEMS: Item[] = [
   },
   {
     id: 'market_report',
-    name: '시장 분석 리포트',
-    description: '모든 섹터의 다음 주 트렌드를 공개합니다',
+    name: '모닝 브리핑',
+    description: '리서치센터 모닝 브리핑 보고서. 모든 섹터의 다음 주 트렌드 공개',
     rarity: 'uncommon',
     cost: 20,
     isConsumable: true,
     effect: 'reveal_all_trends',
   },
-  // 신규
   {
     id: 'sector_report',
-    name: '섹터 리포트',
-    description: '선택 섹터의 다음 주 트렌드 방향 힌트 (정확도 80%)',
+    name: '섹터 컨센서스',
+    description: '증권사 컨센서스 리포트. 선택 섹터의 다음 주 트렌드 힌트 (정확도 80%)',
     rarity: 'uncommon',
     cost: 18,
     isConsumable: true,
@@ -73,18 +71,17 @@ export const ITEMS: Item[] = [
   // ===== Rare =====
   {
     id: 'insider_tip',
-    name: '내부자 팁',
-    description: '가장 크게 오를 종목 1개를 알려줍니다',
+    name: '다크풀 시그널',
+    description: '기관 대량거래(다크풀) 방향 포착. 가장 크게 오를 종목 1개를 알려줍니다',
     rarity: 'rare',
     cost: 30,
     isConsumable: true,
     effect: 'reveal_best_stock',
   },
-  // 신규
   {
     id: 'volatility_shield',
-    name: '변동성 방어막',
-    description: '다음 1주간 보유 종목 최대 손실을 -5%로 제한합니다',
+    name: 'VIX 헤지 포지션',
+    description: 'VIX 선물 매수로 변동성 헤지. 다음 1주간 최대 손실 -5% 제한',
     rarity: 'rare',
     cost: 30,
     isConsumable: true,
@@ -94,18 +91,17 @@ export const ITEMS: Item[] = [
   // ===== Legendary =====
   {
     id: 'crystal_ball',
-    name: '수정 구슬',
-    description: '5일 후의 주가 방향을 미리 봅니다',
+    name: '퀀트 시그널',
+    description: '퀀트 알고리즘 기반 5일 예측. 주가 방향을 미리 봅니다',
     rarity: 'legendary',
     cost: 45,
     isConsumable: true,
     effect: 'predict_5_turns',
   },
-  // 신규
   {
     id: 'insider_network',
-    name: '내부자 네트워크',
-    description: '3일간 모든 뉴스의 실제 영향을 공개합니다',
+    name: '프라임 브로커 채널',
+    description: 'PB 라인을 통한 기관 정보망. 3일간 모든 뉴스의 실제 영향 공개',
     rarity: 'legendary',
     cost: 45,
     isConsumable: true,

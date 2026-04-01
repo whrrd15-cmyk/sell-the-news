@@ -18,8 +18,8 @@ import type { GameTime, TimeSpeed, MarketSession } from '../data/types'
 /** 1게임분 = 실초 (1x 속도) */
 const GAME_MINUTE_IN_REAL_SECONDS = 14 / (8 * 60) // 8시간 = 14실초 → 1분 ≈ 0.0292실초
 
-/** 틱 간격 (실초) */
-export const TICK_INTERVAL_SECONDS = 3
+/** 틱 간격 (실초) — 1초마다 가격 업데이트 */
+export const TICK_INTERVAL_SECONDS = 1
 
 /** 1주 실시간 (초) */
 export const WEEK_REAL_SECONDS = 70
@@ -138,11 +138,12 @@ export function advanceGameTime(
   minute = Math.floor(rawMinutes)
 
   // 틱 이벤트: 장중일 때만 가격 틱 발생
+  // totalSeconds 기반으로 누적 틱 수를 계산하여, 100ms 간격 호출에서도 3초마다 틱 발생
   const isMarketOpen = hour >= MARKET_OPEN_HOUR && hour < MARKET_CLOSE_HOUR
   const tickThreshold = TICK_INTERVAL_SECONDS * (speed === '1x' ? 1 : speed === '2x' ? 0.5 : 0.25)
   const prevTickCount = current.tickCount
   const newTickCount = isMarketOpen
-    ? prevTickCount + Math.floor(deltaRealSec / tickThreshold)
+    ? Math.max(prevTickCount, Math.floor(totalSeconds / tickThreshold))
     : prevTickCount
 
   for (let i = prevTickCount; i < newTickCount; i++) {

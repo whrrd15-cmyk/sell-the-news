@@ -12,12 +12,13 @@ interface StockTabBarProps {
   prices: Record<string, number>
   positions: Position[]
   selectedStockId: string | null
+  pickedStockId?: string | null
   onSelectStock: (stockId: string) => void
 }
 
-export function StockTabBar({ stocks, prices, positions, selectedStockId, onSelectStock }: StockTabBarProps) {
+export function StockTabBar({ stocks, prices, positions, selectedStockId, pickedStockId, onSelectStock }: StockTabBarProps) {
   const stockData = useMemo(() =>
-    stocks.filter(s => !s.isETF).map(s => {
+    stocks.filter(s => !s.isETF && (!pickedStockId || s.id === pickedStockId)).map(s => {
       const price = prices[s.id] ?? s.basePrice
       const pos = positions.find(p => p.stockId === s.id)
       return { stock: s, price, hasPosition: pos && pos.shares > 0 }
@@ -38,7 +39,7 @@ export function StockTabBar({ stocks, prices, positions, selectedStockId, onSele
           >
             {hasPosition && <span className="stock-tab-dot" />}
             <span className="stock-tab-ticker">{stock.ticker}</span>
-            <span className="stock-tab-price">${price.toFixed(0)}</span>
+            <span className="stock-tab-price">${price.toFixed(2)}</span>
           </button>
         )
       })}

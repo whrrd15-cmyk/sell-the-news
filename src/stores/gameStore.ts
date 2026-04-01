@@ -154,6 +154,11 @@ interface GameState {
   addAutoTradeRule: (rule: AutoTradeRule) => void
   removeAutoTradeRule: (id: string) => void
 
+  // 종목 선택 (1개) / 무한 모드
+  pickedStockId: string | null
+  isInfiniteMode: boolean
+  setPickedStock: (stockId: string) => void
+
   // 뉴스 참고 드로어
   isNewsDrawerOpen: boolean
   toggleNewsDrawer: () => void
@@ -202,6 +207,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   equippedCursedItems: [],
   currentWeeklyRule: null,
   usedWeeklyRuleIds: [],
+  pickedStockId: null,
+  isInfiniteMode: false,
   isNewsDrawerOpen: false,
   marketConditions: {},
   autoTradeRules: [],
@@ -212,6 +219,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   removeAutoTradeRule: (id) => set(s => ({
     autoTradeRules: s.autoTradeRules.filter(r => r.id !== id)
   })),
+  setPickedStock: (stockId) => set({ pickedStockId: stockId, selectedStockId: stockId, screen: 'game' }),
   toggleNewsDrawer: () => set(s => ({ isNewsDrawerOpen: !s.isNewsDrawerOpen })),
 
   startNewRun: (runNumber = 1) => {
@@ -239,9 +247,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     deleteSaveData()
 
     const isFirstEverRun = runNumber === 1 && meta.totalRuns === 0
+    const isInfinite = runNumber > RUN_CONFIGS.length
 
     set({
-      screen: 'game',
+      screen: isInfinite ? 'game' : 'stockpicker',
+      pickedStockId: isInfinite ? null : null, // stockpicker에서 설정됨
+      isInfiniteMode: isInfinite,
       phase: 'news',
       runConfig: config,
       turn: 1,

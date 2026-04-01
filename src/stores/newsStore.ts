@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { NewsCard, RunConfig, ChainEvent, WeeklyRule, GameTime } from '../data/types'
 import { generateTurnNews } from '../engine/news'
 import type { ClockEvent } from '../engine/clock'
+import { useMarketStore } from './marketStore'
 
 /**
  * 뉴스 드립 스토어
@@ -115,6 +116,16 @@ export const useNewsStore = create<NewsStoreState>((set, get) => ({
             // 발행!
             newPublished = [sn.card, ...newPublished]
             newFreshness[sn.card.id] = 1.0
+
+            // 뉴스의 실제 영향을 시장에 적용
+            if (sn.card.actualImpact && sn.card.actualImpact.length > 0) {
+              useMarketStore.getState().applyNewsEffect(
+                sn.card.id,
+                sn.card.actualImpact,
+                sn.card.headline,
+              )
+            }
+
             return { ...sn, published: true }
           }
           return sn

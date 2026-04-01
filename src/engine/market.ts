@@ -507,24 +507,24 @@ export function tickMarket(
     const currentPrice = state.prices[stock.id]
 
     // 기본 트렌드 (작은 단위)
-    const trendEffect = state.marketTrend * 0.00005
+    const trendEffect = state.marketTrend * 0.0003
 
     // 뉴스/이벤트 효과
     const eventEffect = (sectorBonus[stock.sector] || 0) * stock.newsSensitivity
 
     // 모멘텀
-    const rawMomentum = (newMomentum[stock.sector] || 0) * 0.003 * weeklyMomentumMult
+    const rawMomentum = (newMomentum[stock.sector] || 0) * 0.01 * weeklyMomentumMult
 
     // 군중 심리
-    const herdEffect = state.herdSentiment * 0.0001
+    const herdEffect = state.herdSentiment * 0.0005
 
     // 평균 회귀 (가격이 기준에서 멀어질수록 당김)
-    const meanReversionStrength = 0.002
+    const meanReversionStrength = 0.003
     const deviation = (currentPrice - stock.basePrice) / stock.basePrice
     const meanReversion = -deviation * meanReversionStrength
 
-    // 랜덤 노이즈 (가우시안)
-    const baseNoise = gaussianRandom(rng) * stock.volatility * 0.0003
+    // 랜덤 노이즈 (가우시안) — 1초 틱당 체감되는 수준
+    const baseNoise = gaussianRandom(rng) * stock.volatility * 0.002
     const dangerNoise = baseNoise * (1 + dangerLevel * 0.8)
     const noise = dangerNoise * weeklyVolMult
 
@@ -534,8 +534,8 @@ export function tickMarket(
     // 더블 오어 낫싱
     if (weeklyRule?.effect.type === 'double_or_nothing') totalChange *= 2
 
-    // 안전 클램프: 단일 틱 최대 ±0.3%
-    totalChange = Math.max(-0.003, Math.min(0.003, totalChange))
+    // 안전 클램프: 단일 틱 최대 ±1.5%
+    totalChange = Math.max(-0.015, Math.min(0.015, totalChange))
 
     const newPrice = Math.max(1, Math.round(currentPrice * (1 + totalChange) * 100) / 100)
     newPrices[stock.id] = newPrice
@@ -554,8 +554,8 @@ export function tickMarket(
     newPrices[etf.id] = Math.max(1, Math.round((avgPrice / sectorAvgBase) * etfBase * 100) / 100)
   }
 
-  // 가격 히스토리 업데이트 (매 틱마다 추가하면 너무 많으므로 10틱마다)
-  if (tickCount % 10 === 0) {
+  // 가격 히스토리 업데이트 (라인 차트 밀도를 위해 3틱마다)
+  if (tickCount % 3 === 0) {
     for (let i = 0; i < newHistories.length; i++) {
       const h = newHistories[i]
       newHistories[i] = {

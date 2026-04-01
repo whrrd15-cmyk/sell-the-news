@@ -4,7 +4,7 @@ import { useMarketStore } from '../../stores/marketStore'
 import { useGameStore } from '../../stores/gameStore'
 import { STOCKS } from '../../data/stocks'
 import { getPortfolioValue, getTotalReturn } from '../../engine/portfolio'
-import CandlestickChart from '../charts/CandlestickChart'
+import RealtimeLineChart from '../charts/RealtimeLineChart'
 import { BalPanel } from '../ui/BalPanel'
 import { TradingPanel } from '../trade/TradingPanel'
 import type { ShortPosition, LeveragedPosition, LimitOrder } from '../../data/types'
@@ -76,6 +76,7 @@ export function TradingTerminal() {
     equippedCursedItems, tradesThisTurn,
     autoTradeRules, addAutoTradeRule, removeAutoTradeRule,
     executeBuy, executeSell,
+    pickedStockId,
   } = useGameStore()
 
   // ═══ 초기화 ═══
@@ -84,9 +85,13 @@ export function TradingTerminal() {
     if (!initialized.current && runConfig) {
       initializeMarket(runConfig)
       generateWeekPool(1, runConfig, null)
+      // pickedStockId가 있으면 자동 선택
+      if (pickedStockId && !selectedStockId) {
+        selectStock(pickedStockId)
+      }
       initialized.current = true
     }
-  }, [runConfig, initializeMarket, generateWeekPool])
+  }, [runConfig, initializeMarket, generateWeekPool, pickedStockId, selectedStockId, selectStock])
 
   // ═══ BGM ═══
   useEffect(() => { bgm.crossFadeTo('game-main') }, [])
@@ -143,6 +148,11 @@ export function TradingTerminal() {
     return prev > 0 ? (curr - prev) / prev : 0
   }, [selectedHistory])
 
+  const openPrice = useMemo(() => {
+    if (selectedHistory.length === 0) return 0
+    return selectedHistory[0]
+  }, [selectedHistory])
+
   const selectedPosition = useMemo(() =>
     selectedStockId ? portfolio.positions.find(p => p.stockId === selectedStockId) ?? null : null,
   [selectedStockId, portfolio.positions])
@@ -186,17 +196,26 @@ export function TradingTerminal() {
   const [guideOpen, setGuideOpen] = useState(true)
   const [toastNews, setToastNews] = useState<import('../../data/types').NewsCard | null>(null)
 
-  // 새 임팩트 뉴스 도착 시 토스트
+  // 새 임팩트 뉴스 도착 시 토스트 (선택 종목 관련 뉴스만)
   const prevNewsCount = useRef(0)
   useEffect(() => {
     if (dripNews.length > prevNewsCount.current && prevNewsCount.current > 0) {
       const newest = dripNews[0]
       if (newest && !newest.isNoise && activePage === 'trading') {
-        setToastNews(newest)
+        // pickedStockId가 있으면 관련 뉴스만 토스트
+        const _pickedSector = pickedStockId ? STOCKS.find(s => s.id === pickedStockId)?.sector : null
+        const _globals = new Set(['economic', 'government', 'geopolitics', 'commodity', 'disaster', 'social'])
+        const _catSector: Record<string, string> = { technology: 'tech' }
+        const isRelevant = !_pickedSector
+          || _globals.has(newest.category)
+          || _catSector[newest.category] === _pickedSector
+          || newest.actualImpact?.some(si => si.sector === _pickedSector || si.sector === 'all')
+          || newest.perceivedImpact?.some(si => si.sector === _pickedSector || si.sector === 'all')
+        if (isRelevant) setToastNews(newest)
       }
     }
     prevNewsCount.current = dripNews.length
-  }, [dripNews.length, activePage])
+  }, [dripNews.length, activePage, pickedStockId])
 
   // ═══ 공매도/레버리지/주문 상태 ═══
   const [shortPositions, setShortPositions] = useState<ShortPosition[]>([])
@@ -278,51 +297,160 @@ export function TradingTerminal() {
   const [loadingStep, setLoadingStep] = useState(0)
   const [loadingText, setLoadingText] = useState('')
 
-  const LOADING_STEPS = [
-    { text: '서버 연결 중...', duration: 400 },
-    { text: '시장 데이터 수신 중...', duration: 600 },
-    { text: 'PXT, NSF, GRP 주가 로딩...', duration: 500 },
-    { text: 'OLM, CBK, SVT 주가 로딩...', duration: 500 },
-    { text: 'FCH, LXB, BGN, MDC 로딩...', duration: 400 },
-    { text: 'ETF 지수 계산 중...', duration: 300 },
-    { text: '뉴스 피드 연결 중...', duration: 400 },
-    { text: '여론 데이터 수집 중...', duration: 300 },
-    { text: '경제 지표 불러오는 중...', duration: 400 },
-    { text: '호가창 초기화 중...', duration: 300 },
-    { text: '포트폴리오 준비 완료', duration: 500 },
-    { text: '장 개시 준비 중...', duration: 600 },
+  // ─── 종목 데이터 (로딩 중 실시간 수신 연출) ───
+  const STOCK_FEED = [
+    { ticker: 'PXT', name: 'PixelTech', base: 150.00, sector: 'tech' },
+    { ticker: 'NSF', name: 'NeonSoft', base: 85.00, sector: 'tech' },
+    { ticker: 'GRP', name: 'GreenPower', base: 60.00, sector: 'energy' },
+    { ticker: 'OLM', name: 'OilMax', base: 45.00, sector: 'energy' },
+    { ticker: 'CBK', name: 'CryptoBank', base: 120.00, sector: 'finance' },
+    { ticker: 'SVT', name: 'SafeVault', base: 200.00, sector: 'finance' },
+    { ticker: 'FCH', name: 'FoodChain', base: 35.00, sector: 'consumer' },
+    { ticker: 'LXB', name: 'LuxBrand', base: 300.00, sector: 'consumer' },
+    { ticker: 'BGN', name: 'BioGen', base: 90.00, sector: 'healthcare' },
+    { ticker: 'MDC', name: 'MedCore', base: 70.00, sector: 'healthcare' },
   ]
 
+  // 종목이 하나씩 수신되는 상태
+  const [receivedStocks, setReceivedStocks] = useState<number>(0)
+  // 각 종목의 실시간 가격 변동
+  const [livePrices, setLivePrices] = useState<Record<string, { price: number; change: number; flash: 'up' | 'down' | null }>>({})
+
+  // 종목 하나씩 수신 (0.4초 간격)
   useEffect(() => {
     if (loadingDone) return
-    if (loadingStep >= LOADING_STEPS.length) {
-      setTimeout(() => setLoadingDone(true), 300)
-      return
-    }
-    setLoadingText(LOADING_STEPS[loadingStep].text)
-    const t = setTimeout(() => setLoadingStep(s => s + 1), LOADING_STEPS[loadingStep].duration)
+    if (receivedStocks >= STOCK_FEED.length) return
+    const t = setTimeout(() => {
+      const stock = STOCK_FEED[receivedStocks]
+      const change = (Math.random() - 0.45) * 4 // -1.8% ~ +2.2% 범위
+      setLivePrices(prev => ({
+        ...prev,
+        [stock.ticker]: {
+          price: stock.base * (1 + change / 100),
+          change,
+          flash: change >= 0 ? 'up' : 'down',
+        },
+      }))
+      setReceivedStocks(n => n + 1)
+    }, receivedStocks === 0 ? 800 : 350)
     return () => clearTimeout(t)
-  }, [loadingStep, loadingDone])
+  }, [receivedStocks, loadingDone])
+
+  // 수신 완료된 종목들의 가격이 계속 틱틱 변하는 효과
+  useEffect(() => {
+    if (loadingDone || receivedStocks < 3) return
+    const interval = setInterval(() => {
+      setLivePrices(prev => {
+        const tickers = Object.keys(prev)
+        if (tickers.length === 0) return prev
+        // 랜덤 1~2개 종목의 가격 변동
+        const count = Math.random() > 0.5 ? 2 : 1
+        const next = { ...prev }
+        for (let i = 0; i < count; i++) {
+          const ticker = tickers[Math.floor(Math.random() * tickers.length)]
+          const entry = next[ticker]
+          const delta = (Math.random() - 0.5) * 0.8
+          const newPrice = entry.price * (1 + delta / 100)
+          const stock = STOCK_FEED.find(s => s.ticker === ticker)
+          const totalChange = stock ? ((newPrice - stock.base) / stock.base) * 100 : entry.change
+          next[ticker] = { price: newPrice, change: totalChange, flash: delta >= 0 ? 'up' : 'down' }
+        }
+        return next
+      })
+    }, 600)
+    return () => clearInterval(interval)
+  }, [receivedStocks, loadingDone])
+
+  // flash 효과 리셋 (0.3초 후)
+  useEffect(() => {
+    if (Object.values(livePrices).every(v => v.flash === null)) return
+    const t = setTimeout(() => {
+      setLivePrices(prev => {
+        const next: typeof prev = {}
+        for (const [k, v] of Object.entries(prev)) {
+          next[k] = { ...v, flash: null }
+        }
+        return next
+      })
+    }, 300)
+    return () => clearTimeout(t)
+  }, [livePrices])
+
+  // 전체 로딩 완료 판정: 모든 종목 수신 + 1초 대기
+  useEffect(() => {
+    if (loadingDone) return
+    if (!market) return
+    if (receivedStocks < STOCK_FEED.length) return
+    const t = setTimeout(() => setLoadingDone(true), 1200)
+    return () => clearTimeout(t)
+  }, [receivedStocks, market, loadingDone])
+
+  // 뉴스 필터링 (hook이므로 early return 전에 위치해야 함)
+  const rawNews = dripNews.length > 0 ? dripNews : currentNews
+  const pickedSector = pickedStockId ? STOCKS.find(s => s.id === pickedStockId)?.sector : null
+  const allNews = useMemo(() => {
+    if (!pickedSector) return rawNews
+    // 글로벌 뉴스는 항상 표시 (경제, 정부, 지정학, 원자재, 재해, 사회)
+    const globals = new Set(['economic', 'government', 'geopolitics', 'commodity', 'disaster', 'social'])
+    // 카테고리↔섹터 매핑 (technology 카테고리 = tech 섹터 등)
+    const categoryToSector: Record<string, string> = {
+      technology: 'tech',
+    }
+    return rawNews.filter(n => {
+      if (globals.has(n.category)) return true
+      if (n.isNoise) return true // 노이즈는 표시 (시장 영향 없음)
+      if (categoryToSector[n.category] === pickedSector) return true
+      const touchesSector = n.actualImpact?.some(si => si.sector === pickedSector || si.sector === 'all')
+      const perceivedTouches = n.perceivedImpact?.some(si => si.sector === pickedSector || si.sector === 'all')
+      return touchesSector || perceivedTouches
+    })
+  }, [rawNews, pickedSector])
 
   if (!market || !loadingDone) {
-    const progress = Math.min(100, Math.round((loadingStep / LOADING_STEPS.length) * 100))
+    const progress = Math.min(100, Math.round((receivedStocks / STOCK_FEED.length) * 100))
+    const statusText =
+      receivedStocks === 0 ? '거래소 연결 중...' :
+      receivedStocks < STOCK_FEED.length ? `시세 수신 중... (${receivedStocks}/${STOCK_FEED.length})` :
+      '장 개시 준비 완료'
     return (
       <div className="loading-screen">
         <div className="loading-character">
           <img src="/characters/mentor-hd/rotations/south.png" alt="" className="loading-character-img" />
         </div>
         <div className="loading-title">SELL THE NEWS</div>
-        <div className="loading-subtitle">{runConfig?.name ?? '시장'} 접속 중</div>
+        <div className="loading-subtitle">{runConfig?.name ?? '시장'} — 장 개시 준비</div>
+
+        {/* 실시간 주가 수신 보드 */}
+        <div className="loading-stock-board">
+          {STOCK_FEED.map((stock, i) => {
+            const live = livePrices[stock.ticker]
+            const visible = i < receivedStocks
+            return (
+              <div
+                key={stock.ticker}
+                className={`loading-stock-row ${visible ? 'loading-stock-row--visible' : ''} ${live?.flash === 'up' ? 'loading-stock-flash-up' : ''} ${live?.flash === 'down' ? 'loading-stock-flash-down' : ''}`}
+              >
+                <span className="loading-stock-ticker">{stock.ticker}</span>
+                <span className="loading-stock-name">{stock.name}</span>
+                <span className="loading-stock-price">
+                  {live ? `$${live.price.toFixed(2)}` : '---'}
+                </span>
+                <span className={`loading-stock-change ${live ? (live.change >= 0 ? 'loading-ticker-up' : 'loading-ticker-down') : ''}`}>
+                  {live ? `${live.change >= 0 ? '+' : ''}${live.change.toFixed(2)}%` : ''}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+
         <div className="loading-bar-container">
           <div className="loading-bar-fill" style={{ width: `${progress}%` }} />
         </div>
-        <div className="loading-text">{loadingText}</div>
+        <div className="loading-text">{statusText}</div>
         <div className="loading-percent">{progress}%</div>
       </div>
     )
   }
-
-  const allNews = dripNews.length > 0 ? dripNews : currentNews
 
   return (
     <div className="h-screen w-screen overflow-hidden font-pixel text-white relative">
@@ -396,7 +524,8 @@ export function TradingTerminal() {
                 <div style={{ gridArea: 'tabs' }}>
                   <StockTabBar
                     stocks={STOCKS} prices={market.prices} positions={portfolio.positions}
-                    selectedStockId={selectedStockId} onSelectStock={handleSelectStock}
+                    selectedStockId={selectedStockId} pickedStockId={pickedStockId}
+                    onSelectStock={handleSelectStock}
                   />
                 </div>
 
@@ -414,14 +543,20 @@ export function TradingTerminal() {
                 <div data-guide="chart" style={{ gridArea: 'chart' }}>
                   <BalPanel
                     label={selectedStock
-                      ? `${selectedStock.ticker}  $${currentPrice.toFixed(0)}  ${priceChange >= 0 ? '▲' : '▼'}${(priceChange * 100).toFixed(1)}%`
+                      ? `${selectedStock.ticker}  $${currentPrice.toFixed(2)}  ${priceChange >= 0 ? '▲' : '▼'}${(priceChange * 100).toFixed(2)}%`
                       : '차트'}
                     accentColor={selectedStock ? SECTOR_COLORS[selectedStock.sector] : undefined}
                     className="flex flex-col h-full"
                   >
                     <div ref={chartContainerRef} className="flex-1 min-h-0">
-                      {selectedHistory.length > 1 ? (
-                        <CandlestickChart prices={selectedHistory} volatility={selectedStock?.volatility ?? 0.3} width={chartSize.w} height={chartSize.h} markers={[]} />
+                      {selectedHistory.length > 0 && selectedStock ? (
+                        <RealtimeLineChart
+                          prices={selectedHistory}
+                          currentPrice={currentPrice}
+                          openPrice={openPrice}
+                          width={chartSize.w}
+                          height={chartSize.h}
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-bal-text-dim text-sm">
                           종목을 선택하면 차트가 표시됩니다

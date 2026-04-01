@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { MarketCondition, WeeklyRule } from '../data/types'
-import { tickMarket, type MarketState, createInitialMarketState, generatePreviousQuarter } from '../engine/market'
+import { tickMarket, applyNewsEffect as applyNewsEffectPure, type MarketState, createInitialMarketState, generatePreviousQuarter } from '../engine/market'
 import { detectSectorConditions } from '../engine/marketCondition'
 import type { ClockEvent } from '../engine/clock'
 import type { RunConfig } from '../data/types'
@@ -14,6 +14,7 @@ interface RealtimeMarketState {
   // 액션
   initialize: (config: RunConfig) => void
   handleClockEvents: (events: ClockEvent[], tickCount: number) => void
+  applyNewsEffect: (newsId: string, impacts: { sector: string; impact: number; duration: number }[], headline?: string) => void
   setWeeklyRule: (rule: WeeklyRule | null) => void
   setDangerLevel: (level: number) => void
 }
@@ -59,6 +60,13 @@ export const useMarketStore = create<RealtimeMarketState>((set, get) => ({
     }
 
     set(newState)
+  },
+
+  applyNewsEffect: (newsId, impacts, headline) => {
+    const { market } = get()
+    if (!market) return
+    const updated = applyNewsEffectPure(market, newsId, impacts, undefined, headline)
+    set({ market: updated })
   },
 
   setWeeklyRule: (rule) => set({ currentWeeklyRule: rule }),

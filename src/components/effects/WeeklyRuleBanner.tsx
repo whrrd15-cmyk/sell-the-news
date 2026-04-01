@@ -15,7 +15,11 @@ export function WeeklyRuleBanner({ rule }: Props) {
           exit={{ opacity: 0, y: -20 }}
           className="weekly-rule-banner"
         >
-          <span className="weekly-rule-icon">{rule.icon}</span>
+          <span className="weekly-rule-icon">
+            {rule.icon.startsWith('/') ? (
+              <img src={rule.icon} alt="" style={{ width: 20, height: 20, imageRendering: 'pixelated' as const }} />
+            ) : rule.icon}
+          </span>
           <div className="weekly-rule-text">
             <span className="weekly-rule-name">{rule.name}</span>
             <span className="weekly-rule-desc">{rule.description}</span>

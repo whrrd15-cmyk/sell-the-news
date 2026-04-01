@@ -9,6 +9,7 @@ import { MetaUpgradeScreen } from './components/layout/MetaUpgradeScreen'
 import { SettingsScreen } from './components/layout/SettingsScreen'
 import { ClearScreen } from './components/layout/ClearScreen'
 import { OnboardingScreen } from './components/layout/OnboardingScreen'
+import { StockPickerScreen } from './components/layout/StockPickerScreen'
 import { CRTOverlay } from './components/effects/CRTOverlay'
 import { FEATURES } from './data/features'
 import './index.css'
@@ -16,6 +17,7 @@ import './index.css'
 const SCREEN_COMPONENTS: Record<string, React.FC> = {
   title: TitleScreen,
   onboarding: OnboardingScreen,
+  stockpicker: StockPickerScreen,
   game: FEATURES.MULTI_WINDOW_UI ? TradingTerminal : GameScreen,
   shop: ShopScreen,
   result: ResultScreen,

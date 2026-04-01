@@ -278,7 +278,7 @@ export interface Portfolio {
 }
 
 export type GamePhase = 'news' | 'analysis' | 'investment' | 'result' | 'event'
-export type Screen = 'title' | 'onboarding' | 'game' | 'shop' | 'result' | 'meta' | 'settings' | 'clear'
+export type Screen = 'title' | 'onboarding' | 'stockpicker' | 'game' | 'shop' | 'result' | 'meta' | 'settings' | 'clear'
 
 // ============ 특수 이벤트 ============
 
@@ -392,12 +392,12 @@ export interface RunConfig {
 }
 
 export const RUN_CONFIGS: RunConfig[] = [
-  { runNumber: 1, name: '수습 시장',   targetReturn: 0.05, volatilityMultiplier: 0.5, fakeNewsRatio: 0.10, maxTurns: 52 },
-  { runNumber: 2, name: '안정 시장',   targetReturn: 0.08, volatilityMultiplier: 0.7, fakeNewsRatio: 0.10, maxTurns: 52 },
-  { runNumber: 3, name: '성장 시장',   targetReturn: 0.12, volatilityMultiplier: 0.9, fakeNewsRatio: 0.15, maxTurns: 52 },
-  { runNumber: 4, name: '변동 시장',   targetReturn: 0.15, volatilityMultiplier: 1.2, fakeNewsRatio: 0.20, maxTurns: 52 },
-  { runNumber: 5, name: '버블 시장',   targetReturn: 0.20, volatilityMultiplier: 1.5, fakeNewsRatio: 0.25, maxTurns: 52 },
-  { runNumber: 6, name: '위기 시장',   targetReturn: 0.18, volatilityMultiplier: 1.8, fakeNewsRatio: 0.30, maxTurns: 52 },
-  { runNumber: 7, name: '혼란 시장',   targetReturn: 0.25, volatilityMultiplier: 2.2, fakeNewsRatio: 0.35, maxTurns: 52 },
-  { runNumber: 8, name: '카오스 시장', targetReturn: 0.30, volatilityMultiplier: 2.5, fakeNewsRatio: 0.40, maxTurns: 52 },
+  { runNumber: 1, name: '골디락스',     targetReturn: 0.05, volatilityMultiplier: 0.5, fakeNewsRatio: 0.10, maxTurns: 52 },
+  { runNumber: 2, name: '강세장',       targetReturn: 0.08, volatilityMultiplier: 0.7, fakeNewsRatio: 0.10, maxTurns: 52 },
+  { runNumber: 3, name: '테이퍼링',     targetReturn: 0.12, volatilityMultiplier: 0.9, fakeNewsRatio: 0.15, maxTurns: 52 },
+  { runNumber: 4, name: '금리 인상기',  targetReturn: 0.15, volatilityMultiplier: 1.2, fakeNewsRatio: 0.20, maxTurns: 52 },
+  { runNumber: 5, name: '버블 경제',    targetReturn: 0.20, volatilityMultiplier: 1.5, fakeNewsRatio: 0.25, maxTurns: 52 },
+  { runNumber: 6, name: '리세션',       targetReturn: 0.18, volatilityMultiplier: 1.8, fakeNewsRatio: 0.30, maxTurns: 52 },
+  { runNumber: 7, name: '블랙 스완',    targetReturn: 0.25, volatilityMultiplier: 2.2, fakeNewsRatio: 0.35, maxTurns: 52 },
+  { runNumber: 8, name: '퍼펙트 스톰',  targetReturn: 0.30, volatilityMultiplier: 2.5, fakeNewsRatio: 0.40, maxTurns: 52 },
 ]

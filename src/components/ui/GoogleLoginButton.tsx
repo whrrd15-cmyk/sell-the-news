@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react'
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   type User,
@@ -21,9 +23,46 @@ export function GoogleLoginButton() {
 
   useEffect(() => {
     if (!auth) return
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u))
+    const unsub = onAuthStateChanged(auth, (u) => {
+      console.log('[Auth] onAuthStateChanged:', u?.email ?? 'null')
+      setUser(u)
+      setLoading(false)
+      // 로그인 감지 시 클라우드 동기화
+      if (u) syncCloudMeta(u.uid)
+    })
     return unsub
   }, [])
+
+  // 리다이렉트 후 복귀 시 결과 처리
+  useEffect(() => {
+    if (!auth) return
+    getRedirectResult(auth).then(async (result) => {
+      console.log('[Auth] getRedirectResult:', result?.user?.email ?? 'no result')
+      if (!result) return
+      await syncCloudMeta(result.user.uid)
+    }).catch((e) => {
+      console.error('[Auth] getRedirectResult error:', e)
+    })
+  }, [])
+
+  async function syncCloudMeta(uid: string) {
+    setSyncing(true)
+    const cloudMeta = await loadFromCloud(uid)
+    if (cloudMeta) {
+      const localMeta = loadMetaProgress()
+      const merged = {
+        ...localMeta,
+        totalRuns: Math.max(localMeta.totalRuns, cloudMeta.totalRuns),
+        highestRunCleared: Math.max(localMeta.highestRunCleared, cloudMeta.highestRunCleared),
+        metaPoints: Math.max(localMeta.metaPoints, cloudMeta.metaPoints),
+        unlockedMetaUpgrades: Array.from(new Set([...localMeta.unlockedMetaUpgrades, ...cloudMeta.unlockedMetaUpgrades])),
+        achievements: Array.from(new Set([...(localMeta.achievements ?? []), ...(cloudMeta.achievements ?? [])])),
+      }
+      saveMetaProgress(merged)
+      refreshMeta?.()
+    }
+    setSyncing(false)
+  }
 
   async function handleSignIn() {
     if (!auth) return
@@ -31,27 +70,15 @@ export function GoogleLoginButton() {
     try {
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
-      // 로그인 후 클라우드에서 메타 데이터 불러오기
-      setSyncing(true)
-      const cloudMeta = await loadFromCloud(result.user.uid)
-      if (cloudMeta) {
-        const localMeta = loadMetaProgress()
-        // 클라우드 vs 로컬 중 더 좋은 기록 병합
-        const merged = {
-          ...localMeta,
-          totalRuns: Math.max(localMeta.totalRuns, cloudMeta.totalRuns),
-          highestRunCleared: Math.max(localMeta.highestRunCleared, cloudMeta.highestRunCleared),
-          metaPoints: Math.max(localMeta.metaPoints, cloudMeta.metaPoints),
-          unlockedMetaUpgrades: Array.from(new Set([...localMeta.unlockedMetaUpgrades, ...cloudMeta.unlockedMetaUpgrades])),
-          achievements: Array.from(new Set([...(localMeta.achievements ?? []), ...(cloudMeta.achievements ?? [])])),
-        }
-        saveMetaProgress(merged)
-        refreshMeta?.()
-      }
-      setSyncing(false)
+      console.log('[Auth] Popup sign-in success:', result.user.email)
+      await syncCloudMeta(result.user.uid)
     } catch (e: any) {
-      if (e?.code !== 'auth/popup-closed-by-user') {
-        console.error('Sign-in failed:', e)
+      console.error('[Auth] Sign-in error:', e?.code, e?.message)
+      if (e?.code === 'auth/popup-blocked') {
+        // 팝업 차단 → 리다이렉트 폴백
+        const provider = new GoogleAuthProvider()
+        await signInWithRedirect(auth, provider)
+        return
       }
     }
     setLoading(false)

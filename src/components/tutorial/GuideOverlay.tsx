@@ -37,25 +37,25 @@ const CHAPTERS: GuideChapter[] = [
     color: '#f0b429',
     page: 'trading',
     steps: [
-      { target: '[data-guide="hud"]', text: '나는 네 담당 선배야. 이름은 아직 비밀이지. 오늘부터 넌 증권사 인턴이야.' },
-      { target: '[data-guide="hud"]', text: '8분기 동안 목표 수익률을 달성해야 해. 1분기 목표는 5%. 뒤로 갈수록 어려워져.' },
-      { target: '[data-guide="hud"]', text: '8분기 전부 클리어하면 정규직이야. 뉴스를 읽고, 분석하고, 매매하는 게 네 일이야.' },
-      { target: '[data-guide="hud"]', text: '자, 화면부터 알려줄게.' },
+      { target: '[data-guide="hud"]', text: '리서치센터 차장이야. 네 OJT 담당. 오늘부터 넌 리서치센터 인턴이야.' },
+      { target: '[data-guide="hud"]', text: '8분기 동안 벤치마크 수익률을 달성해야 해. 1분기 "골디락스" 목표는 5%.' },
+      { target: '[data-guide="hud"]', text: '8분기 "퍼펙트 스톰"까지 서바이브하면 정규직 전환이야.' },
+      { target: '[data-guide="hud"]', text: '자, HTS 화면부터 브리핑해줄게.' },
     ],
   },
   // ═══ Chapter 1: 화면 익히기 ═══
   {
     id: 'ui',
-    title: 'Ch.1 화면 익히기',
+    title: 'Ch.1 트레이딩 데스크',
     color: '#f0b429',
     page: 'trading',
     steps: [
-      { target: '[data-guide="hud"]', text: '여기가 HUD야. 현금, 수익률, RP, 게임 시간이 한눈에 보여.' },
-      { target: '.trading-speed-controls', text: '속도 조절 버튼이야. 일시정지를 눌러봐. 멈춰도 뉴스 읽기, 주문 설정은 가능해.', waitForClick: true },
-      { target: '.stock-tab-bar', text: '종목 탭이야. PXT(PixelTech)를 클릭해서 선택해봐.', waitForClick: true },
-      { target: '[data-guide="chart"]', text: '이게 주가 차트야. 캔들스틱이라고 해. 초록이 상승, 빨강이 하락.' },
-      { target: '[data-guide="orderbook"]', text: '호가창. 매수/매도 호가와 대기 수량이 표시돼. 실제 거래소와 같은 구조야.' },
-      { target: '[data-guide="order"]', text: '주문서. 여기서 매수/매도를 해. 곧 직접 해볼 거야.' },
+      { target: '[data-guide="hud"]', text: '여기가 HUD야. 현금, 수익률, RP, 장 시간이 한눈에 보여.' },
+      { target: '.trading-speed-controls', text: '속도 조절 버튼이야. 일시정지를 눌러봐. 멈춰도 뉴스 분석, 리미트 오더 설정은 가능해.', waitForClick: true },
+      { target: '.stock-tab-bar', text: '종목 탭이야. PXT(PixelTech)를 클릭해봐.', waitForClick: true },
+      { target: '[data-guide="chart"]', text: '캔들스틱 차트야. 양봉(초록)이 상승, 음봉(빨강)이 하락. 거래량도 봐.' },
+      { target: '[data-guide="orderbook"]', text: '호가창이야. 매수/매도 호가와 잔량이 표시돼. 실제 KRX 거래소와 같은 구조.' },
+      { target: '[data-guide="order"]', text: '주문서. 여기서 매수/매도 오더를 넣어. 곧 직접 해볼 거야.' },
     ],
   },
   // ═══ Chapter 2: 첫 매수 ═══
@@ -65,55 +65,55 @@ const CHAPTERS: GuideChapter[] = [
     color: '#5ec269',
     page: 'trading',
     steps: [
-      { target: '[data-guide="order"]', text: '자, 첫 거래를 해보자. 주문서를 봐.' },
+      { target: '[data-guide="order"]', text: '자, 첫 오더를 넣어보자. 주문서를 봐.' },
       { target: '[data-guide="order"]', text: '수량에 5를 입력하고, 매수 버튼을 눌러봐!', waitForClick: true },
-      { target: '[data-guide="order"]', text: '축하해! 첫 거래 성공이야!', characterMood: 'celebrate' },
-      { target: '.trading-quarter-bar', text: '분기 진행률이야. 13주가 지나면 분기가 끝나고 실적을 평가받아.' },
+      { target: '[data-guide="order"]', text: '체결 완료! 첫 포지션 진입 성공이야!', characterMood: 'celebrate' },
+      { target: '.trading-quarter-bar', text: '분기 진행률이야. 13주 후 분기가 끝나고 퍼포먼스 리뷰를 받아.' },
     ],
   },
   // ═══ Chapter 3: 뉴스 읽기 ═══
   {
     id: 'news',
-    title: 'Ch.3 뉴스 읽기',
+    title: 'Ch.3 뉴스 분석',
     color: '#5b9bd5',
     page: 'news',
     steps: [
       { target: '.sidebar-nav-item:nth-child(2)', text: '뉴스 탭으로 이동해. 클릭!', waitForClick: true, page: 'trading' },
-      { target: '.news-v2-tabs', text: '카테고리별로 뉴스를 필터링할 수 있어. 정부, 경제, 기술, 지정학...', page: 'news' },
-      { target: '.news-v2-body', text: '뉴스 목록이야. 속보는 크게, 일반은 작게, 소음은 접혀서 나와.', page: 'news' },
-      { target: '.news-v2-body', text: '기사를 클릭해봐. 상세 내용과 인과관계 분석이 나올 거야.', waitForClick: true, page: 'news' },
-      { target: '.news-v2-body', text: '출처와 신뢰도를 꼭 봐. 공영방송은 믿을 만하고, SNS는 가짜일 수 있어.', page: 'news' },
-      { target: '.news-v2-tabs', text: '가짜 뉴스에 주의해. 펌프앤덤프, FUD, 루머... 스킬을 찍으면 탐지력이 올라가.', page: 'news' },
-      { target: '.news-v2-body', text: '이제 뉴스를 읽고 매매 판단을 내리는 게 네 일이야. 핵심이니까 꼭 기억해.', page: 'news' },
+      { target: '.news-v2-tabs', text: '카테고리 필터야. 정부, 경제, 기술, 지정학별로 분류돼 있어.', page: 'news' },
+      { target: '.news-v2-body', text: '뉴스 피드야. 속보는 크게, 일반은 작게, 노이즈는 접혀서 나와.', page: 'news' },
+      { target: '.news-v2-body', text: '기사를 클릭해봐. 인과관계 분석과 섹터 임팩트가 나와.', waitForClick: true, page: 'news' },
+      { target: '.news-v2-body', text: '출처와 신뢰도를 꼭 봐. 공영방송은 높은 신뢰도, SNS는 노이즈일 수 있어.', page: 'news' },
+      { target: '.news-v2-tabs', text: '가짜 뉴스에 주의해. 펌프앤덤프, FUD, 루머... 팩트체크 스킬로 탐지력을 올려.', page: 'news' },
+      { target: '.news-v2-body', text: '뉴스를 읽고 컨빅션을 세운 뒤 포지션을 잡는 게 알파의 원천이야.', page: 'news' },
     ],
   },
   // ═══ Chapter 4: 여론과 경제지표 ═══
   {
     id: 'social',
-    title: 'Ch.4 여론/경제지표',
+    title: 'Ch.4 센티먼트/매크로',
     color: '#e88c3a',
     page: 'analysis',
     steps: [
       { target: '.sidebar-nav-item:nth-child(3)', text: '사회 탭으로 이동해.', waitForClick: true, page: 'news' },
-      { target: '.social-v2-body', text: '사람들의 SNS 게시글이야. 시장 분위기를 읽을 수 있어.', page: 'analysis' },
-      { target: '.social-v2-body', text: '근데 여론이 항상 맞는 건 아니야. 루머도 섞여 있으니까 비판적으로 읽어.', page: 'analysis', characterMood: 'warning' },
-      { target: '.social-v2-tabs', text: '경제지표 탭도 확인해봐. GDP, 실업률, 금리 같은 숫자가 나와.', waitForClick: true, page: 'analysis' },
-      { target: '.social-v2-body', text: '이 숫자들의 해석은 네 몫이야. 금리 인상은 보통 주가 하락. 실업률 상승은 경기 둔화 신호.', page: 'analysis' },
+      { target: '.social-v2-body', text: 'SNS 피드야. 개미들의 센티먼트를 읽을 수 있어.', page: 'analysis' },
+      { target: '.social-v2-body', text: '근데 센티먼트가 항상 맞진 않아. 역투자 관점도 필요해.', page: 'analysis', characterMood: 'warning' },
+      { target: '.social-v2-tabs', text: '매크로 지표 탭도 확인해봐. GDP, 실업률, 기준금리, CPI가 나와.', waitForClick: true, page: 'analysis' },
+      { target: '.social-v2-body', text: '금리 인상은 성장주 하락, 실업률 상승은 리세션 시그널. 해석은 네 몫이야.', page: 'analysis' },
     ],
   },
   // ═══ Chapter 5: 주문과 리스크 ═══
   {
     id: 'orders',
-    title: 'Ch.5 주문/리스크',
+    title: 'Ch.5 오더/리스크',
     color: '#9b72cf',
     page: 'trading',
     steps: [
-      { target: '.sidebar-nav-item:nth-child(1)', text: '매매 탭으로 돌아가자.', waitForClick: true, page: 'analysis' },
+      { target: '.sidebar-nav-item:nth-child(1)', text: '트레이딩 데스크로 돌아가자.', waitForClick: true, page: 'analysis' },
       { target: '[data-guide="order"]', text: '주문서에서 "주문" 탭을 찾아 클릭해봐.', waitForClick: true, page: 'trading' },
-      { target: '[data-guide="order"]', text: '지정가 매수: 원하는 가격에 자동 매수. 미리 계획하는 거지.', page: 'trading' },
-      { target: '[data-guide="order"]', text: '손절매: 일정 % 이하로 떨어지면 자동 매도. 큰 손실을 방지해.', page: 'trading' },
-      { target: '[data-guide="order"]', text: '감정으로 매매하는 것보다 미리 계획하는 게 훨씬 중요해. 기억해둬.', page: 'trading', characterMood: 'advice' },
-      { target: '[data-guide="order"]', text: '레버리지와 공매도는 위험한 도구야. 나중에 스킬로 열 수 있어.', page: 'trading', characterMood: 'warning' },
+      { target: '[data-guide="order"]', text: '리미트 오더: 지정가에 자동 체결. 계획적 매매의 기본이야.', page: 'trading' },
+      { target: '[data-guide="order"]', text: '스탑로스: -10% 이하 시 자동 청산. 드로다운을 제한해.', page: 'trading' },
+      { target: '[data-guide="order"]', text: '패닉셀보다 사전 오더 세팅이 훨씬 중요해. 리스크 관리가 수익의 절반이야.', page: 'trading', characterMood: 'advice' },
+      { target: '[data-guide="order"]', text: '레버리지와 숏셀링은 양날의 검이야. 스킬로 언락한 뒤 신중하게 써.', page: 'trading', characterMood: 'warning' },
     ],
   },
   // ═══ Chapter 6: RP와 스킬 ═══
@@ -123,23 +123,23 @@ const CHAPTERS: GuideChapter[] = [
     color: '#f0b429',
     page: 'trading',
     steps: [
-      { target: '[data-guide="hud"]', text: 'RP는 평판 포인트. 스킬과 아이템을 사는 화폐야.', page: 'trading' },
-      { target: '[data-guide="hud"]', text: '매주 기본 5RP + 보유 종목당 1RP + 수익이면 3RP + 가짜뉴스 회피 2RP.', page: 'trading' },
-      { target: '[data-guide="hud"]', text: '상점에서 스킬을 사면 영구적으로 기능이 추가돼.', page: 'trading' },
-      { target: '[data-guide="hud"]', text: '팩트체크, 공매도, 레버리지... 뭘 먼저 살지 전략적으로 고민해.', page: 'trading', characterMood: 'advice' },
-      { target: '[data-guide="hud"]', text: '아이템은 일회용이야. 비상자금, 투자보험 같은 거. 위기 때 쓰면 효과적.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: 'RP는 평판 포인트. 리서치 능력을 증명하는 화폐야.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: '매주 기본 5RP + 보유 포지션당 1RP + 수익 시 3RP + 가짜뉴스 회피 2RP.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: '상점에서 스킬을 사면 영구 언락이야. 트레이딩 스킬트리를 전략적으로 찍어.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: '팩트체크 먼저? 숏셀링 먼저? 빌드 전략이 필요해.', page: 'trading', characterMood: 'advice' },
+      { target: '[data-guide="hud"]', text: '아이템은 일회용이야. CMA 긴급인출, 풋옵션 헤지 같은 건 위기 때 효과적.', page: 'trading' },
     ],
   },
   // ═══ 에필로그 ═══
   {
     id: 'epilogue',
-    title: '실전 시작',
+    title: '실전 트레이딩',
     color: '#f0b429',
     page: 'trading',
     steps: [
-      { target: '[data-guide="hud"]', text: '좋아, 기본은 다 알려줬어. 이제 네 판단이야.', page: 'trading' },
-      { target: '[data-guide="hud"]', text: '뉴스를 꼼꼼히 읽고, 감정 배제하고, 분산투자해. 이 세 가지만 기억해.', page: 'trading', characterMood: 'advice' },
-      { target: '[data-guide="hud"]', text: '가이드 버튼으로 언제든 다시 도움받을 수 있어.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: '좋아, OJT 브리핑은 끝났어. 이제 네 판단이야.', page: 'trading' },
+      { target: '[data-guide="hud"]', text: '뉴스를 꼼꼼히 읽고, 감정 배제하고, 포트폴리오 분산. 이 세 가지만 기억해.', page: 'trading', characterMood: 'advice' },
+      { target: '[data-guide="hud"]', text: '가이드 버튼으로 언제든 다시 브리핑 받을 수 있어.', page: 'trading' },
       { target: '[data-guide="hud"]', text: '행운을 빌어, 인턴. ...아, 내 이름은 나중에 알려줄게.', page: 'trading' },
     ],
   },
@@ -220,52 +220,65 @@ export function GuideOverlay({ isOpen, onClose, onNavigate }: GuideOverlayProps)
     above: { src: '/characters/arrow-down.png', rotate: 0 }, // ▼ (아래를 가리킴)
   }
 
-  // 캐릭터 좌표 계산
+  // 캐릭터 좌표 계산 (화면 경계 클램핑)
+  const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
   const getCharPos = useCallback(() => {
-    if (!targetRect) return { left: 70, top: window.innerHeight - 220 }
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    if (!targetRect) return { left: 70, top: clamp(vh - 220, 10, vh - 140) }
     const r = targetRect
+    let left: number, top: number
     switch (placement) {
       case 'below':
-        return { left: Math.max(56, r.left), top: r.bottom + 50 }
+        left = r.left; top = r.bottom + 50; break
       case 'right':
-        return { left: r.right + 16, top: Math.max(10, r.top + r.height / 2 - 64) }
+        left = r.right + 16; top = r.top + r.height / 2 - 64; break
       case 'left':
-        return { left: Math.max(56, r.left - 140), top: Math.max(10, r.top + r.height / 2 - 64) }
+        left = r.left - 140; top = r.top + r.height / 2 - 64; break
       case 'above':
-        return { left: Math.max(56, r.left), top: Math.max(10, r.top - 180) }
+        left = r.left; top = r.top - 180; break
     }
+    return { left: clamp(left, 56, vw - 140), top: clamp(top, 10, vh - 140) }
   }, [targetRect, placement])
 
-  // 화살표 좌표 계산
+  // 화살표 좌표 계산 (화면 경계 클램핑)
   const getArrowPos = useCallback(() => {
+    const vw = window.innerWidth
+    const vh = window.innerHeight
     if (!targetRect) return { left: 0, top: 0 }
     const r = targetRect
+    let left: number, top: number
     switch (placement) {
       case 'below':
-        return { left: r.left + r.width / 2 - 20, top: r.bottom + 6 }
+        left = r.left + r.width / 2 - 20; top = r.bottom + 6; break
       case 'right':
-        return { left: r.right + 4, top: r.top + r.height / 2 - 20 }
+        left = r.right + 4; top = r.top + r.height / 2 - 20; break
       case 'left':
-        return { left: r.left - 44, top: r.top + r.height / 2 - 20 }
+        left = r.left - 44; top = r.top + r.height / 2 - 20; break
       case 'above':
-        return { left: r.left + r.width / 2 - 20, top: r.top - 44 }
+        left = r.left + r.width / 2 - 20; top = r.top - 44; break
     }
+    return { left: clamp(left, 10, vw - 44), top: clamp(top, 10, vh - 44) }
   }, [targetRect, placement])
 
-  // 말풍선 좌표 계산
+  // 말풍선 좌표 계산 (화면 경계 클램핑)
   const getBubblePos = useCallback(() => {
-    if (!targetRect) return { left: window.innerWidth / 2 - 160, top: window.innerHeight / 2 }
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    if (!targetRect) return { left: clamp(vw / 2 - 160, 56, vw - 340), top: clamp(vh / 2, 10, vh - 160) }
     const charPos = getCharPos()
+    let left: number, top: number
     switch (placement) {
       case 'below':
-        return { left: Math.min(charPos.left + 140, window.innerWidth - 340), top: charPos.top }
+        left = charPos.left + 140; top = charPos.top; break
       case 'right':
-        return { left: Math.min(charPos.left, window.innerWidth - 340), top: Math.min(charPos.top + 136, window.innerHeight - 120) }
+        left = charPos.left; top = charPos.top + 136; break
       case 'left':
-        return { left: Math.max(56, charPos.left - 20), top: Math.min(charPos.top + 136, window.innerHeight - 120) }
+        left = charPos.left - 20; top = charPos.top + 136; break
       case 'above':
-        return { left: Math.min(charPos.left + 140, window.innerWidth - 340), top: charPos.top }
+        left = charPos.left + 140; top = charPos.top; break
     }
+    return { left: clamp(left, 56, vw - 340), top: clamp(top, 10, vh - 160) }
   }, [targetRect, placement, getCharPos])
 
 
