@@ -273,7 +273,54 @@ export function TradingTerminal() {
   // ═══ 분기 진행률 ═══
   const quarterProgress = getQuarterProgress(gameTime)
 
-  if (!market) return null
+  // ═══ 로딩 화면 ═══
+  const [loadingDone, setLoadingDone] = useState(false)
+  const [loadingStep, setLoadingStep] = useState(0)
+  const [loadingText, setLoadingText] = useState('')
+
+  const LOADING_STEPS = [
+    { text: '서버 연결 중...', duration: 400 },
+    { text: '시장 데이터 수신 중...', duration: 600 },
+    { text: 'PXT, NSF, GRP 주가 로딩...', duration: 500 },
+    { text: 'OLM, CBK, SVT 주가 로딩...', duration: 500 },
+    { text: 'FCH, LXB, BGN, MDC 로딩...', duration: 400 },
+    { text: 'ETF 지수 계산 중...', duration: 300 },
+    { text: '뉴스 피드 연결 중...', duration: 400 },
+    { text: '여론 데이터 수집 중...', duration: 300 },
+    { text: '경제 지표 불러오는 중...', duration: 400 },
+    { text: '호가창 초기화 중...', duration: 300 },
+    { text: '포트폴리오 준비 완료', duration: 500 },
+    { text: '장 개시 준비 중...', duration: 600 },
+  ]
+
+  useEffect(() => {
+    if (loadingDone) return
+    if (loadingStep >= LOADING_STEPS.length) {
+      setTimeout(() => setLoadingDone(true), 300)
+      return
+    }
+    setLoadingText(LOADING_STEPS[loadingStep].text)
+    const t = setTimeout(() => setLoadingStep(s => s + 1), LOADING_STEPS[loadingStep].duration)
+    return () => clearTimeout(t)
+  }, [loadingStep, loadingDone])
+
+  if (!market || !loadingDone) {
+    const progress = Math.min(100, Math.round((loadingStep / LOADING_STEPS.length) * 100))
+    return (
+      <div className="loading-screen">
+        <div className="loading-character">
+          <img src="/characters/mentor-hd/rotations/south.png" alt="" className="loading-character-img" />
+        </div>
+        <div className="loading-title">SELL THE NEWS</div>
+        <div className="loading-subtitle">{runConfig?.name ?? '시장'} 접속 중</div>
+        <div className="loading-bar-container">
+          <div className="loading-bar-fill" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="loading-text">{loadingText}</div>
+        <div className="loading-percent">{progress}%</div>
+      </div>
+    )
+  }
 
   const allNews = dripNews.length > 0 ? dripNews : currentNews
 

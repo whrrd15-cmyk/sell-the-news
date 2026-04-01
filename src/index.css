@@ -290,6 +290,56 @@ body {
 }
 
 /* ═══════════════════════════════════════════
+   로딩 화면
+   ═══════════════════════════════════════════ */
+.loading-screen {
+  height: 100vh; width: 100vw; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  background: var(--color-bal-bg); position: relative; overflow: hidden;
+}
+.loading-screen::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(240,180,41,0.06) 0%, transparent 70%);
+}
+.loading-character { position: relative; z-index: 1; margin-bottom: 8px; }
+.loading-character-img {
+  width: 96px; height: 96px; image-rendering: pixelated;
+  filter: drop-shadow(0 0 16px rgba(240,180,41,0.3));
+  animation: character-bob 2s ease-in-out infinite;
+}
+.loading-title {
+  font-size: 28px; font-weight: 800; color: var(--color-bal-gold);
+  letter-spacing: 6px; text-shadow: 0 0 20px rgba(240,180,41,0.3);
+  position: relative; z-index: 1;
+}
+.loading-subtitle {
+  font-size: 12px; color: var(--color-bal-text-dim); letter-spacing: 2px;
+  position: relative; z-index: 1;
+}
+.loading-bar-container {
+  width: 280px; height: 8px; border-radius: 4px;
+  background: rgba(255,255,255,0.06); overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative; z-index: 1;
+}
+.loading-bar-fill {
+  height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, var(--color-bal-green), var(--color-bal-gold));
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(94,194,105,0.3);
+}
+.loading-text {
+  font-size: 10px; color: var(--color-bal-text-dim);
+  font-variant-numeric: tabular-nums; min-height: 16px;
+  position: relative; z-index: 1;
+}
+.loading-percent {
+  font-size: 11px; font-weight: 700; color: var(--color-bal-gold);
+  font-variant-numeric: tabular-nums;
+  position: relative; z-index: 1;
+}
+
+/* ═══════════════════════════════════════════
    트레이딩 터미널 (실시간 모드)
    ═══════════════════════════════════════════ */
 .trading-terminal {
