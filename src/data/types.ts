@@ -147,6 +147,19 @@ export interface NewsCard {
   isNoise?: boolean           // 시장에 실질적 영향 없는 노이즈 뉴스
 }
 
+// ============ 뉴스 판단 ============
+
+export type JudgmentType = 'bullish' | 'bearish' | 'fake' | 'skip'
+export type JudgmentAccuracy = 'direction' | 'strength' | 'fake_correct' | 'wrong' | 'skipped'
+
+export interface NewsJudgment {
+  newsId: string
+  type: JudgmentType
+  sliderValue: number       // -1.0 (강한 악재) ~ +1.0 (강한 호재), fake/skip은 0
+  rpEarned: number          // 결과 페이즈에서 산출
+  accuracy: JudgmentAccuracy | null
+}
+
 // ============ 이벤트 정의 (풀에서 생성하는 원본) ============
 
 export interface EventTemplate {

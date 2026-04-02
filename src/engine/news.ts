@@ -62,8 +62,9 @@ export function generateTurnNews(
   pendingChainEvents: ChainEvent[],
   usedEventIds: Set<string>,
   weeklyRule?: WeeklyRule | null,
+  gameSeed?: number,
 ): { news: NewsCard[]; newChainEvents: ChainEvent[] } {
-  const rng = seededRandom(turn * 3571 + config.runNumber * 17)
+  const rng = seededRandom(turn * 3571 + config.runNumber * 17 + (gameSeed ?? 0))
   const impactfulCount = 2 + Math.floor(rng() * 2) // 실질 영향 뉴스 2~3개
   const extraNoise = weeklyRule?.effect.type === 'news_overload' ? weeklyRule.effect.extraNews : 0
   const noiseCount = 3 + Math.floor(rng() * 3) + extraNoise // 노이즈 뉴스 3~5개 + 주간규칙 추가

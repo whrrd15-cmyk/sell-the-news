@@ -69,7 +69,7 @@ export function NewsPanel({ news, unlockedSkills }: NewsPanelProps) {
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03, duration: 0.15 }}
-                    {...(i === 0 ? { 'data-tutorial': 'news-item' } : {})}
+                    {...(i === 0 ? { 'data-guide': 'news-item' } : {})}
                   >
                     <NewsListItem
                       news={n}

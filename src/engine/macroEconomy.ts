@@ -60,10 +60,10 @@ export interface MacroSensitivity {
 // ═══════════════════════════════════════════
 
 export const SECTOR_MACRO_SENSITIVITY: Record<Sector, MacroSensitivity> = {
-  tech:       { interestRate: -0.30, inflation: -0.10, gdp: +0.40, unemployment: -0.10, exchangeRate: +0.30, oilPrice: -0.10 },
+  tech:       { interestRate: -0.20, inflation: -0.10, gdp: +0.25, unemployment: -0.10, exchangeRate: +0.15, oilPrice: -0.10 },
   energy:     { interestRate: -0.10, inflation: +0.20, gdp: +0.20, unemployment:  0.00, exchangeRate: -0.10, oilPrice: +0.80 },
   finance:    { interestRate: +0.50, inflation: -0.20, gdp: +0.30, unemployment: -0.20, exchangeRate: +0.10, oilPrice:  0.00 },
-  consumer:   { interestRate: -0.20, inflation: -0.40, gdp: +0.50, unemployment: -0.50, exchangeRate: -0.20, oilPrice: -0.20 },
+  consumer:   { interestRate: -0.15, inflation: -0.25, gdp: +0.40, unemployment: -0.30, exchangeRate: -0.10, oilPrice: -0.10 },
   healthcare: { interestRate: -0.10, inflation:  0.00, gdp: +0.20, unemployment:  0.00, exchangeRate: +0.10, oilPrice:  0.00 },
 }
 
@@ -109,13 +109,13 @@ export function createInitialMacro(config: RunConfig): MacroEconomyState {
   // 난이도별 시작 조건
   const presets: Record<number, Partial<MacroEconomyState>> = {
     1: { interestRate: 2.0, inflation: 2.0, gdpGrowth: 2.5, unemployment: 4.0, exchangeRate: 1200, oilPrice: 65, pmi: 53, consumerConfidence: 105 },
-    2: { interestRate: 2.0, inflation: 2.2, gdpGrowth: 3.0, unemployment: 3.5, exchangeRate: 1180, oilPrice: 70, pmi: 55, consumerConfidence: 110 },
+    2: { interestRate: 2.0, inflation: 2.2, gdpGrowth: 2.0, unemployment: 3.5, exchangeRate: 1180, oilPrice: 70, pmi: 55, consumerConfidence: 110 },
     3: { interestRate: 3.0, inflation: 3.0, gdpGrowth: 2.0, unemployment: 4.5, exchangeRate: 1250, oilPrice: 75, pmi: 50, consumerConfidence: 95 },
-    4: { interestRate: 4.5, inflation: 4.0, gdpGrowth: 1.5, unemployment: 5.0, exchangeRate: 1300, oilPrice: 85, pmi: 48, consumerConfidence: 85 },
-    5: { interestRate: 2.5, inflation: 5.0, gdpGrowth: 4.0, unemployment: 3.0, exchangeRate: 1150, oilPrice: 90, pmi: 58, consumerConfidence: 120 },
-    6: { interestRate: 5.0, inflation: 3.5, gdpGrowth: -0.5, unemployment: 7.0, exchangeRate: 1350, oilPrice: 55, pmi: 44, consumerConfidence: 70 },
-    7: { interestRate: 3.0, inflation: 6.0, gdpGrowth: 0.5, unemployment: 6.0, exchangeRate: 1400, oilPrice: 110, pmi: 42, consumerConfidence: 65 },
-    8: { interestRate: 5.5, inflation: 7.0, gdpGrowth: -1.0, unemployment: 8.0, exchangeRate: 1450, oilPrice: 120, pmi: 38, consumerConfidence: 55 },
+    4: { interestRate: 4.5, inflation: 4.5, gdpGrowth: -0.5, unemployment: 6.0, exchangeRate: 1320, oilPrice: 90, pmi: 44, consumerConfidence: 75 },
+    5: { interestRate: 3.5, inflation: 5.0, gdpGrowth: -1.0, unemployment: 6.5, exchangeRate: 1280, oilPrice: 85, pmi: 42, consumerConfidence: 70 },
+    6: { interestRate: 5.0, inflation: 5.5, gdpGrowth: -1.5, unemployment: 7.5, exchangeRate: 1380, oilPrice: 80, pmi: 40, consumerConfidence: 60 },
+    7: { interestRate: 5.5, inflation: 6.5, gdpGrowth: -2.0, unemployment: 8.5, exchangeRate: 1420, oilPrice: 100, pmi: 36, consumerConfidence: 50 },
+    8: { interestRate: 6.0, inflation: 7.5, gdpGrowth: -3.0, unemployment: 10.0, exchangeRate: 1480, oilPrice: 120, pmi: 32, consumerConfidence: 40 },
   }
 
   // 무한모드: 런 8 기반 + 추가 스트레스
@@ -271,7 +271,7 @@ export function calculateMacroEffect(
     dOil * sens.oilPrice
 
   // 스케일 팩터: 전체 가격 변동의 ~10-20% 기여
-  const MACRO_SCALE = 0.01
+  const MACRO_SCALE = 0.025
   return raw * MACRO_SCALE
 }
 

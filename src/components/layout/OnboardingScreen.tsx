@@ -4,160 +4,91 @@ import { useGameStore } from '../../stores/gameStore'
 import { BalatroBackground } from '../effects/BalatroBackground'
 import { SFX } from '../../utils/sound'
 import { STOCKS } from '../../data/stocks'
+import { RUN_CONFIGS } from '../../data/types'
 import { MiniSparkline } from '../stocks/MiniSparkline'
 
-/* ─── 대화 시나리오 타입 ─── */
-interface DialogueLine {
-  speaker: string
-  text: string
-  choices?: { label: string; next: string }[]
+/* ─── 컷신 장면 정의 ─── */
+interface CutsceneScene {
+  id: string
+  /** 대사 (없으면 null) */
+  dialogue: string | null
+  /** 화자 */
+  speaker?: string
 }
 
-type DialogueScript = Record<string, DialogueLine[]>
-
-/* ─── 대화 스크립트 (확장판) ─── */
-const SCRIPT: DialogueScript = {
-  intro: [
-    { speaker: '리서치센터 차장', text: '나는 리서치센터 차장이야. 네 OJT 담당. 이름? ...나중에 알려줄게.' },
-    { speaker: '리서치센터 차장', text: '축하해, 오늘부터 넌 한국투자증권 리서치센터 인턴이야.' },
-    { speaker: '리서치센터 차장', text: '네 임무를 설명해줄게. 잘 들어.' },
-    { speaker: '리서치센터 차장', text: '총 8분기야. 1분기 = 13주. 1주 = 약 70초 실시간.' },
-    { speaker: '리서치센터 차장', text: '매 분기마다 벤치마크 대비 목표 수익률이 있어. 미달이면? 해고야.' },
-    { speaker: '리서치센터 차장', text: '1분기 "골디락스" — 목표 5%. 경기가 좋으니 쉬워 보이지? 근데...' },
-    { speaker: '리서치센터 차장', text: '8분기 "퍼펙트 스톰" — 목표 30%. 변동성 폭발에 가짜뉴스 범람이야.' },
-    { speaker: '리서치센터 차장', text: '8분기 전부 클리어하면 — 정규직 전환이야. 도전해볼 만하지?' },
-    {
-      speaker: '리서치센터 차장',
-      text: '혹시... HTS 써본 적 있어? 주식 투자 경험은?',
-      choices: [
-        { label: '처음이야, PER이 뭔지도 몰라', next: 'stockBasics' },
-        { label: '롱숏은 알아, 기초는 건너뛰자', next: 'skipBasics' },
-      ],
-    },
-  ],
-  stockBasics: [
-    { speaker: '리서치센터 차장', text: '신입이구나. 괜찮아, 핵심만 브리핑해줄게. 집중해.' },
-  ],
-  afterPresentation: [
-    { speaker: '리서치센터 차장', text: '어때, 대충 컨센서스가 잡혔어?' },
-    { speaker: '리서치센터 차장', text: '좋아, 이제 실전 트레이딩 플로우를 설명하지.' },
-  ],
-  skipBasics: [
-    { speaker: '리서치센터 차장', text: '경험자구나. 좋아, 기초 브리핑은 스킵하자.' },
-  ],
-  gameFlow: [
-    { speaker: '리서치센터 차장', text: '시장은 실시간으로 돌아가. 매일 9시에 개장, 16시에 폐장.' },
-    { speaker: '리서치센터 차장', text: '프리마켓(8~9시)에 모닝 브리핑이 들어와. 이때 뉴스 분석해.' },
-    { speaker: '리서치센터 차장', text: '장중(9~16시)에 매매 집행해. 컨빅션이 서면 바로 오더 넣어.' },
-    { speaker: '리서치센터 차장', text: '이 사이클이 5일(월~금) 반복되면 1주가 끝나.' },
-    { speaker: '리서치센터 차장', text: '속도 조절이 있어. 1배속 기본, 2배, 4배, 일시정지도 가능해.' },
-    { speaker: '리서치센터 차장', text: '일시정지 상태에서도 뉴스 분석, 리미트 오더 설정은 돼. 활용해.' },
-  ],
-  screenGuide: [
-    { speaker: '리서치센터 차장', text: 'HTS 화면을 설명해줄게. 왼쪽 사이드바 봐.' },
-    { speaker: '리서치센터 차장', text: '매매 탭 — 차트, 호가창, 주문서. 네 메인 트레이딩 데스크야.' },
-    { speaker: '리서치센터 차장', text: '뉴스 탭 — 기사를 읽고 팩트체크하는 곳. 이 게임의 알파가 여기 있어.' },
-    { speaker: '리서치센터 차장', text: '사회 탭 — 센티먼트와 매크로 지표를 모니터링하는 곳이야.' },
-    { speaker: '리서치센터 차장', text: '가이드 버튼 — 언제든 다시 브리핑 받을 수 있어.' },
-  ],
-  advice: [
-    { speaker: '리서치센터 차장', text: '마지막으로, 10년차 선배의 어드바이스 몇 가지.' },
-    { speaker: '리서치센터 차장', text: '첫째, 뉴스를 꼼꼼히 읽어. 대충 훑으면 펌프앤덤프에 당해.' },
-    { speaker: '리서치센터 차장', text: '둘째, 감정으로 매매하지 마. 패닉셀은 항상 바닥에서 일어나.' },
-    { speaker: '리서치센터 차장', text: '셋째, 포트폴리오를 분산해. 한 종목 몰빵은 투자가 아니라 도박이야.' },
-    { speaker: '리서치센터 차장', text: '넷째, RP를 전략적으로 써. 팩트체크 먼저? 레버리지 먼저? 네가 판단해.' },
-    { speaker: '리서치센터 차장', text: '다섯째, 시장은 네가 틀릴 수 있다는 걸 전제해. 항상 헤지 포지션을 생각해.' },
-  ],
-  ready: [
-    { speaker: '리서치센터 차장', text: '좋아, 이제 전 분기 마켓 데이터를 풀링할게. 잠깐만...' },
-  ],
-  final: [
-    { speaker: '리서치센터 차장', text: '데이터 로딩 완료.' },
-    { speaker: '리서치센터 차장', text: '1분기 골디락스. 벤치마크 수익률 5% — 워밍업이야.' },
-    { speaker: '리서치센터 차장', text: '8분기까지 서바이브하면 정규직 전환이야.' },
-    { speaker: '리서치센터 차장', text: '행운을 빌어, 인턴. ...아, 그리고 내 이름은 나중에 알려줄게.' },
-  ],
-}
-
-/* ─── 신입 인턴 교육 슬라이드 (확장판) ─── */
-const PRESENTATION_SLIDES = [
-  {
-    title: '주식이란?',
-    content: '주식은 회사의 소유권 조각이야.\n회사가 잘 되면 주가 올라가고, 못 되면 내려가.\n간단하지? 근데 이 "잘 되느냐 못 되느냐"를\n예측하는 게 어려운 거야.',
-    icon: 'I',
-  },
-  {
-    title: '매수와 매도',
-    content: '매수 = 사는 거. 매도 = 파는 거.\n싸게 사서 비싸게 팔면 이익.\n근데 "언제가 싼 건지, 비싼 건지"\n그걸 판단하는 게 이 게임의 전부야.',
-    icon: 'II',
-  },
-  {
-    title: '뉴스 리터러시',
-    content: '이 게임의 핵심이야. 뉴스.\n모든 뉴스가 진짜는 아니야.\n공영방송 = 높은 신뢰도.\n익명 블로그 = 거의 못 믿어.\n펌프앤덤프, FUD 같은 함정을 피해.',
-    icon: 'III',
-  },
-  {
-    title: '분산 투자',
-    content: '한 종목에 올인하지 마. 절대로.\n5개 섹터: 기술, 에너지, 금융, 소비재, 헬스케어.\n여러 섹터에 나눠서 투자하면\n한 섹터가 망해도 나머지가 버텨줘.',
-    icon: 'IV',
-  },
-  {
-    title: 'RP와 스킬',
-    content: 'RP = 평판 포인트. 매주 뉴스를 잘 분석하면 쌓여.\nRP로 스킬을 사. 스킬은 영구 업그레이드야.\n팩트체크, 공매도, 레버리지...\n뭘 먼저 살지 전략적으로 고민해.',
-    icon: 'V',
-  },
+const SCENES: CutsceneScene[] = [
+  { id: 'logo', dialogue: null },
+  { id: 'mentor', speaker: '리서치센터 차장', dialogue: '한국투자증권 리서치센터 차장이야. 네 OJT 담당.' },
+  { id: 'mission', speaker: '리서치센터 차장', dialogue: '8분기 동안 목표 수익률을 달성해. 실패하면 해고야.' },
+  { id: 'rules', speaker: '리서치센터 차장', dialogue: '딱 세 가지만 기억해. 이것만 지키면 살아남아.' },
+  { id: 'depart', speaker: '리서치센터 차장', dialogue: '행운을 빌어, 인턴.' },
 ]
 
-/* ─── 온보딩 화면 ─── */
+const RULE_CARDS = [
+  { title: '뉴스를 읽어라', desc: '출처를 확인하고\n가짜 뉴스를 걸러내' },
+  { title: '감정을 배제해라', desc: '패닉셀은 항상\n바닥에서 일어나' },
+  { title: '분산 투자해라', desc: '한 종목 몰빵은\n투자가 아니라 도박' },
+]
+
+/* 분기별 목표 — RUN_CONFIGS에서 동적으로 생성 */
+const DIFFICULTY_LABELS: Record<number, { grade: string; color: string }> = {
+  1: { grade: 'EASY', color: '#4ade80' },
+  2: { grade: 'EASY', color: '#4ade80' },
+  3: { grade: 'NORMAL', color: '#facc15' },
+  4: { grade: 'NORMAL', color: '#facc15' },
+  5: { grade: 'HARD', color: '#f97316' },
+  6: { grade: 'HARD', color: '#f97316' },
+  7: { grade: 'EXTREME', color: '#ef4444' },
+  8: { grade: 'EXTREME', color: '#ef4444' },
+}
+
+const QUARTER_TARGETS = RUN_CONFIGS.map((c, i) => ({
+  q: `${i + 1}분기 ${c.name}`,
+  target: `${(c.targetReturn * 100).toFixed(0)}%`,
+  vol: c.volatilityMultiplier,
+  fake: c.fakeNewsRatio,
+  ...DIFFICULTY_LABELS[c.runNumber] ?? { grade: '???', color: '#888' },
+}))
+
+/* ─── 워킹 애니메이션 프레임 ─── */
+const WALK_FRAMES = Array.from({ length: 6 }, (_, i) =>
+  `/characters/mentor-hd/animations/walking/east/frame_${String(i).padStart(3, '0')}.png`
+)
+
 export function OnboardingScreen() {
   const { setScreen, market } = useGameStore()
-
-  // 대화 상태
-  const [scriptKey, setScriptKey] = useState('intro')
-  const [lineIndex, setLineIndex] = useState(0)
+  const [sceneIndex, setSceneIndex] = useState(0)
   const [displayedText, setDisplayedText] = useState('')
-  const [isTyping, setIsTyping] = useState(true)
+  const [isTyping, setIsTyping] = useState(false)
 
-  // 프레젠테이션
-  const [showPresentation, setShowPresentation] = useState(false)
-  const [slideIndex, setSlideIndex] = useState(0)
+  // 워킹 애니메이션
+  const [walkFrame, setWalkFrame] = useState(0)
 
-  // 전분기 로딩 애니메이션
-  const [showHistoryAnim, setShowHistoryAnim] = useState(false)
-  const [historyProgress, setHistoryProgress] = useState(0)
+  // 카드 플립 상태
+  const [flippedCards, setFlippedCards] = useState<number[]>([])
 
-  // 전체 흐름 단계
-  const [flowPhase, setFlowPhase] = useState<
-    'loading' | 'dialogue' | 'presentation' | 'historyAnim' | 'done'
-  >('loading')
+  // 분기 목표 애니메이션
+  const [visibleQuarters, setVisibleQuarters] = useState(0)
 
-  // 로딩 화면 → 대화로 전환
-  const [loadingProgress, setLoadingProgress] = useState(0)
+  // 미니 차트 (장면 5용)
+  const [chartProgress, setChartProgress] = useState(0)
+
+  const scene = SCENES[sceneIndex]
+
+  // ─── 워킹 프레임 순환 (장면 1, 4) ───
   useEffect(() => {
-    if (flowPhase !== 'loading') return
-    const interval = setInterval(() => {
-      setLoadingProgress(p => {
-        if (p >= 100) {
-          clearInterval(interval)
-          setTimeout(() => setFlowPhase('dialogue'), 400)
-          return 100
-        }
-        return p + Math.random() * 8 + 2
-      })
-    }, 80)
+    if (scene.id !== 'mentor' && scene.id !== 'depart') return
+    const interval = setInterval(() => setWalkFrame(f => (f + 1) % WALK_FRAMES.length), 120)
     return () => clearInterval(interval)
-  }, [flowPhase])
+  }, [scene.id])
 
-  const currentLines = SCRIPT[scriptKey] || []
-  const currentLine = currentLines[lineIndex]
-
-  // 타이핑 효과
+  // ─── 타이핑 효과 ───
   useEffect(() => {
-    if (!currentLine || flowPhase !== 'dialogue') return
+    if (!scene.dialogue) return
     setDisplayedText('')
     setIsTyping(true)
     let i = 0
-    const text = currentLine.text
+    const text = scene.dialogue
     const interval = setInterval(() => {
       if (i < text.length) {
         setDisplayedText(text.slice(0, i + 1))
@@ -169,132 +100,48 @@ export function OnboardingScreen() {
       }
     }, 30)
     return () => clearInterval(interval)
-  }, [scriptKey, lineIndex, flowPhase, currentLine])
+  }, [sceneIndex, scene.dialogue])
 
-  // 전분기 히스토리 로딩 애니메이션
+  // ─── 장면 2: 분기별 목표 계단 애니메이션 ───
   useEffect(() => {
-    if (!showHistoryAnim) return
-    let progress = 0
+    if (scene.id !== 'mission') return
+    setVisibleQuarters(0)
+    let count = 0
     const interval = setInterval(() => {
-      progress += 1
-      setHistoryProgress(progress)
-      if (progress >= 13) {
-        clearInterval(interval)
-        // 로딩 완료 → final 대화로
-        setTimeout(() => {
-          setShowHistoryAnim(false)
-          setFlowPhase('dialogue')
-          setScriptKey('final')
-          setLineIndex(0)
-        }, 600)
-      }
-    }, 150)
+      count++
+      setVisibleQuarters(count)
+      if (count >= QUARTER_TARGETS.length) clearInterval(interval)
+    }, 200)
     return () => clearInterval(interval)
-  }, [showHistoryAnim])
+  }, [scene.id])
 
-  // 다음 대사 / 선택 처리
-  const advanceDialogue = useCallback(() => {
-    if (!currentLine) return
+  // ─── 장면 3: 카드 플립 스태거 ───
+  useEffect(() => {
+    if (scene.id !== 'rules') return
+    setFlippedCards([])
+    const timers = RULE_CARDS.map((_, i) =>
+      setTimeout(() => {
+        setFlippedCards(prev => [...prev, i])
+        SFX.click()
+      }, 600 + i * 400)
+    )
+    return () => timers.forEach(clearTimeout)
+  }, [scene.id])
 
-    // 아직 타이핑 중이면 한번에 표시
-    if (isTyping) {
-      setDisplayedText(currentLine.text)
-      setIsTyping(false)
-      return
-    }
+  // ─── 장면 4: 배경 미니차트 로딩 ───
+  useEffect(() => {
+    if (scene.id !== 'depart') return
+    setChartProgress(0)
+    let p = 0
+    const interval = setInterval(() => {
+      p++
+      setChartProgress(p)
+      if (p >= 13) clearInterval(interval)
+    }, 120)
+    return () => clearInterval(interval)
+  }, [scene.id])
 
-    // 선택지가 있으면 클릭 처리 안함 (선택지에서 처리)
-    if (currentLine.choices) return
-
-    SFX.click()
-    const nextIndex = lineIndex + 1
-
-    if (nextIndex < currentLines.length) {
-      setLineIndex(nextIndex)
-    } else {
-      // 현재 스크립트 끝 → 다음 단계
-      handleScriptEnd(scriptKey)
-    }
-  }, [currentLine, isTyping, lineIndex, currentLines, scriptKey])
-
-  const handleChoice = useCallback((next: string) => {
-    SFX.click()
-    if (next === 'stockBasics') {
-      // 주식 기초 → 프레젠테이션 진입
-      setScriptKey('stockBasics')
-      setLineIndex(0)
-    } else {
-      setScriptKey(next)
-      setLineIndex(0)
-    }
-  }, [])
-
-  const handleScriptEnd = useCallback((key: string) => {
-    switch (key) {
-      case 'stockBasics':
-        // 프레젠테이션 시작
-        setFlowPhase('presentation')
-        setShowPresentation(true)
-        setSlideIndex(0)
-        break
-      case 'afterPresentation':
-      case 'skipBasics':
-        // 게임 플로우 설명
-        setScriptKey('gameFlow')
-        setLineIndex(0)
-        break
-      case 'gameFlow':
-        // 화면 구조 설명
-        setScriptKey('screenGuide')
-        setLineIndex(0)
-        break
-      case 'screenGuide':
-        // 실전 조언
-        setScriptKey('advice')
-        setLineIndex(0)
-        break
-      case 'advice':
-        // 전분기 로딩 안내
-        setScriptKey('ready')
-        setLineIndex(0)
-        break
-      case 'ready':
-        // 전분기 로딩 애니메이션
-        setFlowPhase('historyAnim')
-        setShowHistoryAnim(true)
-        break
-      case 'final':
-        // 게임 시작!
-        setFlowPhase('done')
-        setTimeout(() => setScreen('game'), 400)
-        break
-      default:
-        setScriptKey('gameFlow')
-        setLineIndex(0)
-    }
-  }, [setScreen])
-
-  // 프레젠테이션 다음/완료
-  const nextSlide = useCallback(() => {
-    SFX.click()
-    if (slideIndex < PRESENTATION_SLIDES.length - 1) {
-      setSlideIndex(slideIndex + 1)
-    } else {
-      // 프레젠테이션 종료 → 대화 복귀
-      setShowPresentation(false)
-      setFlowPhase('dialogue')
-      setScriptKey('afterPresentation')
-      setLineIndex(0)
-    }
-  }, [slideIndex])
-
-  // 스킵 전체
-  const skipAll = useCallback(() => {
-    SFX.click()
-    setScreen('game')
-  }, [setScreen])
-
-  // 전분기 차트 데이터 (애니메이션용)
+  // 전분기 차트 데이터
   const previewStocks = useMemo(() => {
     const sample = STOCKS.filter(s => !s.isETF).slice(0, 6)
     return sample.map(stock => {
@@ -303,204 +150,303 @@ export function OnboardingScreen() {
     })
   }, [market])
 
+  // ─── 장면 전환 ───
+  const advance = useCallback(() => {
+    // 타이핑 중이면 즉시 완성
+    if (isTyping && scene.dialogue) {
+      setDisplayedText(scene.dialogue)
+      setIsTyping(false)
+      return
+    }
+
+    SFX.click()
+    if (sceneIndex < SCENES.length - 1) {
+      setSceneIndex(sceneIndex + 1)
+    } else {
+      setScreen('stockpicker')
+    }
+  }, [isTyping, scene, sceneIndex, setScreen])
+
+  // ESC 스킵
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        SFX.click()
+        setScreen('stockpicker')
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [setScreen])
+
+  const skipAll = useCallback(() => {
+    SFX.click()
+    setScreen('stockpicker')
+  }, [setScreen])
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="cutscene-root" onClick={advance}>
       <BalatroBackground />
 
       {/* 스킵 버튼 */}
       <motion.button
-        className="onboarding-skip-btn"
+        className="cutscene-skip"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        onClick={skipAll}
+        transition={{ delay: 0.5 }}
+        onClick={(e) => { e.stopPropagation(); skipAll() }}
       >
         건너뛰기 &raquo;
       </motion.button>
 
-      {/* ─── 픽셀 캐릭터 (로딩 후 표시) ─── */}
-      {flowPhase !== 'loading' && <div className="onboarding-character">
-        <img
-          src="/characters/mentor-hd/rotations/south.png"
-          alt="Mentor"
-          className="onboarding-character-img"
-          style={{ imageRendering: 'pixelated' }}
-        />
-      </div>}
-
       <AnimatePresence mode="wait">
-        {/* ─── 로딩 화면 ─── */}
-        {flowPhase === 'loading' && (
+        {/* ═══ 장면 0: 로고 ═══ */}
+        {scene.id === 'logo' && (
           <motion.div
-            key="loading"
-            className="onboarding-loading"
+            key="logo"
+            className="cutscene-scene cutscene-logo"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ duration: 0.5 }}
+          >
+            {/* CRT 글리치 오버레이 */}
+            <div className="cutscene-glitch-overlay">
+              <div className="cutscene-glitch-scanlines" />
+              <div className="cutscene-glitch-rgb" />
+            </div>
+
+            <motion.h1
+              className="cutscene-title"
+              initial={{ opacity: 0, scale: 0.8, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+            >
+              SELL THE NEWS
+            </motion.h1>
+            <motion.p
+              className="cutscene-subtitle"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.6, 0.3, 0.7, 0.5] }}
+              transition={{ duration: 1.5, delay: 1 }}
+            >
+              아무 곳이나 클릭하여 시작
+            </motion.p>
+          </motion.div>
+        )}
+
+        {/* ═══ 장면 1: 멘토 등장 ═══ */}
+        {scene.id === 'mentor' && (
+          <motion.div
+            key="mentor"
+            className="cutscene-scene cutscene-mentor"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
           >
-            <div className="onboarding-loading-title">SELL THE NEWS</div>
-            <div className="onboarding-loading-sub">시스템 초기화 중...</div>
-            <div className="onboarding-loading-bar">
-              <div className="onboarding-loading-fill" style={{ width: `${Math.min(loadingProgress, 100)}%` }} />
+            {/* 멘토 워킹 */}
+            <motion.div
+              className="cutscene-mentor-walk"
+              initial={{ x: '-120px' }}
+              animate={{ x: '0px' }}
+              transition={{ duration: 1.2, ease: 'easeOut' }}
+            >
+              <img
+                src={WALK_FRAMES[walkFrame]}
+                alt="Mentor"
+                className="cutscene-character"
+              />
+            </motion.div>
+
+            {/* 대사 */}
+            <div className="cutscene-dialogue">
+              <span className="cutscene-speaker">{scene.speaker}</span>
+              <p className="cutscene-text">
+                {displayedText}
+                {isTyping && <span className="cutscene-cursor">_</span>}
+              </p>
             </div>
-            <div className="onboarding-loading-pct">{Math.min(Math.floor(loadingProgress), 100)}%</div>
           </motion.div>
         )}
 
-        {/* ─── 대화 모드 ─── */}
-        {flowPhase === 'dialogue' && currentLine && (
+        {/* ═══ 장면 2: 미션 브리핑 ═══ */}
+        {scene.id === 'mission' && (
           <motion.div
-            key={`dialogue-${scriptKey}-${lineIndex}`}
-            className="onboarding-dialogue-box"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.25 }}
-            onClick={advanceDialogue}
+            key="mission"
+            className="cutscene-scene cutscene-mission"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
           >
-            {/* 스피커 이름 */}
-            <div className="onboarding-speaker">
-              <span className="onboarding-speaker-name">{currentLine.speaker}</span>
-              <span className="onboarding-speaker-line" />
+            {/* 멘토 정면 */}
+            <div className="cutscene-mentor-static">
+              <img
+                src="/characters/mentor-hd/rotations/south.png"
+                alt="Mentor"
+                className="cutscene-character"
+              />
             </div>
 
-            {/* 대사 텍스트 */}
-            <div className="onboarding-text">
-              {displayedText}
-              {isTyping && (
-                <motion.span
-                  className="onboarding-cursor"
-                  animate={{ opacity: [1, 0] }}
-                  transition={{ duration: 0.4, repeat: Infinity, repeatType: 'reverse' }}
-                >_</motion.span>
-              )}
-            </div>
-
-            {/* 선택지 */}
-            {!isTyping && currentLine.choices && (
-              <motion.div
-                className="onboarding-choices"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                {currentLine.choices.map((c, i) => (
-                  <button
-                    key={i}
-                    className="onboarding-choice-btn"
-                    onClick={(e) => { e.stopPropagation(); handleChoice(c.next) }}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-
-            {/* 다음 힌트 */}
-            {!isTyping && !currentLine.choices && (
-              <motion.div
-                className="onboarding-next-hint"
-                animate={{ opacity: [0.3, 0.8, 0.3] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                클릭하여 계속 ▼
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-
-        {/* ─── 프레젠테이션 모드 ─── */}
-        {flowPhase === 'presentation' && showPresentation && (
-          <motion.div
-            key={`slide-${slideIndex}`}
-            className="onboarding-presentation"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.3 }}
-          >
-            {/* 슬라이드 진행 바 */}
-            <div className="onboarding-slide-progress">
-              {PRESENTATION_SLIDES.map((_, i) => (
-                <div
+            {/* 분기별 난이도 테이블 */}
+            <div className="cutscene-quarters">
+              <div className="cutscene-quarter-header">
+                <span>분기</span>
+                <span>목표</span>
+                <span>변동성</span>
+                <span>페이크</span>
+                <span>난이도</span>
+              </div>
+              {QUARTER_TARGETS.map((q, i) => (
+                <motion.div
                   key={i}
-                  className={`onboarding-slide-dot ${i === slideIndex ? 'onboarding-slide-dot--active' : ''} ${i < slideIndex ? 'onboarding-slide-dot--done' : ''}`}
-                />
+                  className="cutscene-quarter-row"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={i < visibleQuarters ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <span className="cutscene-quarter-name">{q.q}</span>
+                  <span className="cutscene-quarter-target">{q.target}</span>
+                  <span className="cutscene-quarter-vol">x{q.vol.toFixed(1)}</span>
+                  <span className="cutscene-quarter-fake">{(q.fake * 100).toFixed(0)}%</span>
+                  <span className="cutscene-quarter-grade" style={{ color: q.color }}>{q.grade}</span>
+                </motion.div>
               ))}
             </div>
 
-            <div className="onboarding-slide-icon">
-              {PRESENTATION_SLIDES[slideIndex].icon}
+            {/* 대사 */}
+            <div className="cutscene-dialogue cutscene-dialogue--bottom">
+              <span className="cutscene-speaker">{scene.speaker}</span>
+              <p className="cutscene-text">
+                {displayedText}
+                {isTyping && <span className="cutscene-cursor">_</span>}
+              </p>
             </div>
-            <h2 className="onboarding-slide-title">
-              {PRESENTATION_SLIDES[slideIndex].title}
-            </h2>
-            <p className="onboarding-slide-content">
-              {PRESENTATION_SLIDES[slideIndex].content}
-            </p>
-
-            <button className="onboarding-slide-next" onClick={nextSlide}>
-              {slideIndex < PRESENTATION_SLIDES.length - 1 ? '다음' : '알겠어!'}
-            </button>
           </motion.div>
         )}
 
-        {/* ─── 전분기 히스토리 로딩 애니메이션 ─── */}
-        {flowPhase === 'historyAnim' && (
+        {/* ═══ 장면 3: 핵심 룰 카드 ═══ */}
+        {scene.id === 'rules' && (
           <motion.div
-            key="history-anim"
-            className="onboarding-history-anim"
+            key="rules"
+            className="cutscene-scene cutscene-rules"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
           >
-            <h2 className="onboarding-history-title">
-              전 분기 시장 데이터 로딩 중...
-            </h2>
-
-            {/* 진행 바 */}
-            <div className="onboarding-history-bar">
-              <motion.div
-                className="onboarding-history-bar-fill"
-                animate={{ width: `${(historyProgress / 13) * 100}%` }}
-                transition={{ duration: 0.1 }}
-              />
-              <span className="onboarding-history-bar-text">
-                WEEK {historyProgress}/13
-              </span>
+            <div className="cutscene-cards">
+              {RULE_CARDS.map((card, i) => (
+                <motion.div
+                  key={i}
+                  className="cutscene-card"
+                  initial={{ rotateY: 180, opacity: 0.5 }}
+                  animate={
+                    flippedCards.includes(i)
+                      ? { rotateY: 0, opacity: 1 }
+                      : { rotateY: 180, opacity: 0.5 }
+                  }
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                  style={{ perspective: '800px' }}
+                >
+                  <div className="cutscene-card-inner">
+                    <div className="cutscene-card-number">{i + 1}</div>
+                    <h3 className="cutscene-card-title">{card.title}</h3>
+                    <p className="cutscene-card-desc">{card.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
             </div>
 
-            {/* 미니 차트들 */}
-            <div className="onboarding-history-charts">
+            {/* 대사 */}
+            <div className="cutscene-dialogue cutscene-dialogue--bottom">
+              <span className="cutscene-speaker">{scene.speaker}</span>
+              <p className="cutscene-text">
+                {displayedText}
+                {isTyping && <span className="cutscene-cursor">_</span>}
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══ 장면 4: 출근 ═══ */}
+        {scene.id === 'depart' && (
+          <motion.div
+            key="depart"
+            className="cutscene-scene cutscene-depart"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {/* 배경 미니차트 */}
+            <div className="cutscene-bg-charts">
               {previewStocks.map(({ stock, prices }) => {
-                const visiblePrices = prices.slice(0, Math.min(historyProgress + 1, prices.length))
+                const visible = prices.slice(0, Math.min(chartProgress + 1, prices.length))
                 return (
                   <motion.div
                     key={stock.id}
-                    className="onboarding-history-chart-item"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 }}
+                    className="cutscene-bg-chart"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.3 }}
+                    transition={{ delay: 0.2 }}
                   >
-                    <span className="onboarding-history-ticker">{stock.ticker}</span>
-                    <MiniSparkline
-                      prices={visiblePrices}
-                      width={80}
-                      height={20}
-                    />
-                    {visiblePrices.length > 0 && (
-                      <span className="onboarding-history-price">
-                        ${visiblePrices[visiblePrices.length - 1]?.toFixed(0)}
-                      </span>
-                    )}
+                    <span className="cutscene-bg-ticker">{stock.ticker}</span>
+                    <MiniSparkline prices={visible} width={90} height={24} />
                   </motion.div>
                 )
               })}
             </div>
+
+            {/* 멘토 퇴장 */}
+            <motion.div
+              className="cutscene-mentor-walk"
+              initial={{ x: '0px' }}
+              animate={{ x: 'calc(100vw + 120px)' }}
+              transition={{ duration: 2, delay: 1.5, ease: 'easeIn' }}
+            >
+              <img
+                src={WALK_FRAMES[walkFrame]}
+                alt="Mentor"
+                className="cutscene-character"
+              />
+            </motion.div>
+
+            {/* 1분기 타이틀 */}
+            <motion.div
+              className="cutscene-quarter-title"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.6 }}
+            >
+              <span className="cutscene-qt-label">QUARTER 1</span>
+              <span className="cutscene-qt-name">골디락스</span>
+              <span className="cutscene-qt-target">목표 수익률 5%</span>
+            </motion.div>
+
+            {/* 대사 */}
+            <div className="cutscene-dialogue cutscene-dialogue--bottom">
+              <span className="cutscene-speaker">{scene.speaker}</span>
+              <p className="cutscene-text">
+                {displayedText}
+                {isTyping && <span className="cutscene-cursor">_</span>}
+              </p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 다음 힌트 (로고 이외) */}
+      {scene.dialogue && !isTyping && (
+        <motion.div
+          className="cutscene-next-hint"
+          animate={{ opacity: [0.3, 0.7, 0.3] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          클릭하여 계속 ▼
+        </motion.div>
+      )}
     </div>
   )
 }
-

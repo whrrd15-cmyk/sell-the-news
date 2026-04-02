@@ -80,7 +80,7 @@ export function StockCardStrip({
   const handleMouseUp = useCallback(() => { isDragging.current = false }, [])
 
   return (
-    <div className="stock-card-strip" data-tutorial="stock-sidebar">
+    <div className="stock-card-strip" data-guide="stock-sidebar">
       {/* 섹터 필터 칩 */}
       <div className="stock-card-strip-filters">
         {FILTER_OPTIONS.map(({ key, label, color }) => {

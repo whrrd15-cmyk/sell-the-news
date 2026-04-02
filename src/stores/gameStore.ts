@@ -16,6 +16,8 @@ import type {
   MarketCondition,
   AutoTradeRule,
   AutoTradeResult,
+  NewsJudgment,
+  JudgmentType,
 } from '../data/types'
 import { RUN_CONFIGS } from '../data/types'
 import { createInitialMarketState, generatePreviousQuarter, simulateTurn, applyNewsEffect, calculateDangerLevel, type MarketState, type PriceChangeBreakdown, type EffectHistoryEntry } from '../engine/market'
@@ -86,9 +88,9 @@ interface GameState {
   breakingNewsDismissed: boolean
   usedBreakingNewsIds: Set<string>
 
-  // 튜토리얼
-  tutorialStep: number
-  showTutorial: boolean
+  // 가이드 (튜토리얼 통합)
+  guideMode: 'auto' | 'manual' | null
+  guideStep: number
 
   // 학습 피드백
   lastFeedback: { newsId: string; note: string; wasFake: boolean }[]
@@ -134,8 +136,9 @@ interface GameState {
   attemptQuizLoan: (quizId: string, answerIndex: number, shortfall: number) => boolean
   rerollShopItems: () => void
   dismissBreakingNews: () => void
-  dismissTutorial: () => void
-  advanceTutorial: () => void
+  setGuideMode: (mode: 'auto' | 'manual' | null) => void
+  advanceGuide: () => void
+  dismissGuide: () => void
   startInfiniteMode: () => void
   refreshMeta: () => void
   loadDebugResult: () => void
@@ -164,6 +167,13 @@ interface GameState {
   // 뉴스 참고 드로어
   isNewsDrawerOpen: boolean
   toggleNewsDrawer: () => void
+
+  // 뉴스 분석관 (판단 시스템)
+  newsJudgments: NewsJudgment[]
+  currentNewsIndex: number
+  allNewsJudged: boolean
+  judgeNews: (newsId: string, type: JudgmentType, sliderValue: number) => void
+  skipNews: (newsId: string) => void
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -201,8 +211,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   breakingNews: null,
   breakingNewsDismissed: false,
   usedBreakingNewsIds: new Set<string>(),
-  tutorialStep: 0,
-  showTutorial: false,
+  guideMode: null,
+  guideStep: 0,
   lastFeedback: [],
   lastInterestEarned: 0,
   resultCascadeData: null,
@@ -215,6 +225,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   isNewsDrawerOpen: false,
   marketConditions: {},
   autoTradeRules: [],
+  newsJudgments: [],
+  currentNewsIndex: 0,
+  allNewsJudged: false,
 
   addAutoTradeRule: (rule) => set(s => ({
     autoTradeRules: [...s.autoTradeRules.filter(r => r.id !== rule.id), rule]
@@ -224,6 +237,28 @@ export const useGameStore = create<GameState>((set, get) => ({
   })),
   setPickedStock: (stockId) => set({ pickedStockId: stockId, selectedStockId: stockId, screen: 'game' }),
   toggleNewsDrawer: () => set(s => ({ isNewsDrawerOpen: !s.isNewsDrawerOpen })),
+
+  judgeNews: (newsId, type, sliderValue) => {
+    const { currentNews, currentNewsIndex } = get()
+    const judgment: NewsJudgment = {
+      newsId,
+      type,
+      sliderValue,
+      rpEarned: 0,
+      accuracy: null,
+    }
+    const newJudgments = [...get().newsJudgments, judgment]
+    const nextIndex = currentNewsIndex + 1
+    set({
+      newsJudgments: newJudgments,
+      currentNewsIndex: nextIndex,
+      allNewsJudged: nextIndex >= currentNews.length,
+    })
+  },
+
+  skipNews: (newsId) => {
+    get().judgeNews(newsId, 'skip', 0)
+  },
 
   startNewRun: (runNumber = 1) => {
     // 무한 모드 (runNumber > 8): 동적 난이도 생성
@@ -253,7 +288,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const isInfinite = runNumber > RUN_CONFIGS.length
 
     set({
-      screen: isInfinite ? 'game' : 'stockpicker',
+      screen: isInfinite ? 'game' : isFirstEverRun ? 'onboarding' : 'stockpicker',
       pickedStockId: isInfinite ? null : null, // stockpicker에서 설정됨
       isInfiniteMode: isInfinite,
       phase: 'news',
@@ -286,14 +321,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       breakingNews: null,
       breakingNewsDismissed: false,
       usedBreakingNewsIds: new Set(),
-      tutorialStep: 0,
-      showTutorial: isFirstEverRun,
+      guideMode: isFirstEverRun ? 'auto' : null,
+      guideStep: 0,
       lastFeedback: [],
       equippedCursedItems: [],
       currentWeeklyRule: null,
       usedWeeklyRuleIds: [],
       marketConditions: detectSectorConditions(market),
       autoTradeRules: [],
+      newsJudgments: [],
+      currentNewsIndex: 0,
+      allNewsJudged: false,
     })
   },
 
@@ -560,6 +598,46 @@ export const useGameStore = create<GameState>((set, get) => ({
     const hasFakeNews = currentNews.some((n) => !n.isReal)
     if (!hasFakeNews) rpEarned += 1
 
+    // 뉴스 판단 정확도 RP
+    const { newsJudgments } = get()
+    for (const judgment of newsJudgments) {
+      const news = currentNews.find(n => n.id === judgment.newsId)
+      if (!news || judgment.type === 'skip') {
+        judgment.accuracy = 'skipped'
+        continue
+      }
+
+      if (judgment.type === 'fake') {
+        if (!news.isReal) {
+          rpEarned += 3; judgment.rpEarned = 3; judgment.accuracy = 'fake_correct'
+          stats.fakeNewsDetected += 1
+        } else {
+          judgment.rpEarned = 0; judgment.accuracy = 'wrong'
+        }
+        continue
+      }
+
+      // 호재/악재 판단: 가장 지배적인 영향과 비교
+      const dominantImpact = news.actualImpact.length > 0
+        ? news.actualImpact.reduce((max, si) => Math.abs(si.impact) > Math.abs(max.impact) ? si : max)
+        : null
+      const actualValue = dominantImpact?.impact ?? 0
+      const playerValue = judgment.sliderValue
+
+      const sameDirection = (playerValue > 0 && actualValue > 0) || (playerValue < 0 && actualValue < 0)
+      const strengthAccurate = Math.abs(playerValue - actualValue) <= 0.2
+
+      if (sameDirection && strengthAccurate) {
+        rpEarned += 2; judgment.rpEarned = 2; judgment.accuracy = 'strength'
+        stats.correctPredictions += 1
+      } else if (sameDirection) {
+        rpEarned += 1; judgment.rpEarned = 1; judgment.accuracy = 'direction'
+        stats.correctPredictions += 1
+      } else {
+        judgment.rpEarned = 0; judgment.accuracy = 'wrong'
+      }
+    }
+
     // RP 부스터 효과
     const rpDoubled = activeEffects.includes('double_rp_next')
     if (rpDoubled) {
@@ -669,6 +747,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         lastEventFeedback: null,
         pendingChainEvents: [...remainingChains, ...newChainEvents],
         lastFeedback: [],
+        newsJudgments: [],
+        currentNewsIndex: 0,
+        allNewsJudged: false,
       })
       return
     }
@@ -746,6 +827,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       currentWeeklyRule: weeklyRule,
       usedWeeklyRuleIds: newUsedWeeklyRuleIds,
       marketConditions: updatedConditions,
+      newsJudgments: [],
+      currentNewsIndex: 0,
+      allNewsJudged: false,
     })
 
     // 자동 저장
@@ -1086,8 +1170,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ breakingNewsDismissed: true })
   },
 
-  dismissTutorial: () => set({ showTutorial: false }),
-  advanceTutorial: () => set((s) => ({ tutorialStep: s.tutorialStep + 1 })),
+  setGuideMode: (mode) => set({ guideMode: mode, guideStep: 0 }),
+  advanceGuide: () => set((s) => ({ guideStep: s.guideStep + 1 })),
+  dismissGuide: () => set({ guideMode: null, guideStep: 0 }),
 
   startInfiniteMode: () => {
     // 무한 모드: runNumber 9부터 시작, 점진적으로 어려워짐

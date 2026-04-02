@@ -24,3 +24,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code / MCP local tools
+.claude/node
+.claude/node-bin
+.claude/start-dev.sh
+.claude/settings.json
+.playwright-mcp/
+node
+npx
+
+# Docs (auto-generated)
+docs/superpowers/

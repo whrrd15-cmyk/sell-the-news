@@ -84,7 +84,7 @@ export function createInitialMarketState(config: RunConfig): MarketState {
     prices,
     priceHistories,
     activeEffects: [],
-    marketTrend: 0.02,
+    marketTrend: 0.03 - (config.runNumber - 1) * 0.03,
     sectorMomentum,
     dangerLevel: 0,
     herdSentiment: 0,
@@ -114,9 +114,10 @@ function updateHerdSentiment(
   avgMarketReturn: number,
   rng: () => number,
 ): number {
-  const drift = avgMarketReturn * 2.0
+  const drift = avgMarketReturn * 1.2
   const noise = (rng() - 0.5) * 0.05
-  const next = current * 0.9 + drift + noise
+  const meanRevert = -current * 0.08
+  const next = current * 0.85 + drift + noise + meanRevert
   return Math.max(-1, Math.min(1, next))
 }
 
@@ -135,10 +136,10 @@ function updateSectorBubbles(
         0,
       ) / sectorStocks.length
 
-    if (avgDeviation > 0.15) {
-      next[sector] = Math.min(1.0, (current[sector] || 0) + 0.05)
+    if (avgDeviation > 0.20) {
+      next[sector] = Math.min(1.0, (current[sector] || 0) + 0.03)
     } else {
-      next[sector] = Math.max(0, (current[sector] || 0) - 0.02)
+      next[sector] = Math.max(0, (current[sector] || 0) - 0.03)
     }
   }
   return next
@@ -157,15 +158,15 @@ function updatePanicLevel(
 
   let next = current
   if (droppingCount >= 3 || avgChange < -0.05) {
-    next = current + 0.15
+    next = current + 0.10
   } else {
-    next = current - 0.10
+    next = current - 0.12
   }
   // 반등 보너스: 상승 종목이 있으면 패닉 추가 감소
   if (risingCount > 0 && current > 0) {
-    next -= 0.05
+    next -= 0.08
   }
-  return Math.max(0, Math.min(0.7, next))
+  return Math.max(0, Math.min(0.5, next))
 }
 
 // ─── 메인 시뮬레이션 ──────────────────────────────────────
@@ -195,15 +196,24 @@ export function simulateTurn(
     .map((e) => ({ ...e, remainingTurns: e.remainingTurns - 1 }))
     .filter((e) => e.remainingTurns > 0)
 
+  // 난이도별 호재 감쇠: 고난이도에서 양성 뉴스 효과 감소 (불황기 호재 둔화)
+  const goodNewsDamping = 1 - (config.runNumber - 1) * 0.06
+  // Lv1: 1.0, Lv2: 0.94, Lv3: 0.88, Lv4: 0.82, Lv5: 0.76, Lv6: 0.70, Lv7: 0.64, Lv8: 0.58
+
   for (const effect of state.activeEffects) {
+    // 뉴스 효과 점진 적용: 첫 턴 40%, 이후 점차 강해짐
+    const maxDuration = Math.max(...effect.sectorImpacts.map(si => si.duration), 1)
+    const elapsed = Math.max(0, maxDuration - effect.remainingTurns)
+    const rampFactor = Math.min(1, 0.4 + elapsed * 0.3)
     for (const si of effect.sectorImpacts) {
+      const scaled = si.impact > 0 ? si.impact * goodNewsDamping : si.impact
       const key = si.sector
       if (key === 'all') {
         for (const s of SECTORS) {
-          sectorBonus[s] = (sectorBonus[s] || 0) + si.impact * 0.3
+          sectorBonus[s] = (sectorBonus[s] || 0) + scaled * 0.15 * rampFactor
         }
       } else {
-        sectorBonus[key] = (sectorBonus[key] || 0) + si.impact * 0.3
+        sectorBonus[key] = (sectorBonus[key] || 0) + scaled * 0.15 * rampFactor
       }
     }
   }
@@ -251,18 +261,20 @@ export function simulateTurn(
     const eventEffect = (sectorBonus[stock.sector] || 0) * stock.newsSensitivity
 
     // 모멘텀 (관성) + 주간 규칙 증폭
-    const rawMomentum = (newMomentum[stock.sector] || 0) * 0.3 * weeklyMomentumMult
+    const rawMomentum = (newMomentum[stock.sector] || 0) * 0.25 * weeklyMomentumMult
 
     // 군중 심리: 모멘텀을 증폭
     const herdEffect =
       state.herdSentiment * 0.01 * (1 + Math.abs(rawMomentum))
 
-    // 패닉 시 하락 모멘텀 가속
-    const panicMult = 1 + state.panicLevel * 0.3
-    const momentum = rawMomentum < 0 ? rawMomentum * panicMult : rawMomentum
+    // 패닉 시 하락 모멘텀 가속 (상승 시에도 미약한 반등 부스트)
+    const panicMult = 1 + state.panicLevel * 0.2
+    const momentum = rawMomentum < 0
+      ? rawMomentum * panicMult
+      : rawMomentum * (1 + state.panicLevel * 0.05)
 
-    // 평균 회귀 (위험도 높으면 강화, 패닉 시 약화)
-    const meanRevStr = (0.02 + state.dangerLevel * 0.015) * (1 - state.panicLevel * 0.5)
+    // 평균 회귀 (위험도 높으면 강화, 패닉 시에도 유지)
+    const meanRevStr = (0.04 + state.dangerLevel * 0.01) * (1 - state.panicLevel * 0.3)
     const meanReversion = ((stock.basePrice - currentPrice) / stock.basePrice) * meanRevStr
 
     // 랜덤 노이즈 (위험도 + 주간 규칙 반영)
@@ -293,9 +305,9 @@ export function simulateTurn(
     // 버블 팝 체크
     let bubblePopVal = 0
     const bubbleLevel = state.sectorBubble[stock.sector] || 0
-    if (bubbleLevel > 0.8 && rng() < (bubbleLevel - 0.8) * 0.5) {
-      bubblePopVal = -(0.08 + rng() * 0.07)
-      changeRate += bubblePopVal // 최대 -15%
+    if (bubbleLevel > 0.85 && rng() < (bubbleLevel - 0.85) * 0.3) {
+      bubblePopVal = -(0.05 + rng() * 0.05)
+      changeRate += bubblePopVal // 최대 -10%
     }
 
     const newPrice = Math.max(0.01, currentPrice * (1 + changeRate))
@@ -327,7 +339,7 @@ export function simulateTurn(
 
     // 모멘텀 업데이트
     const priceChange = (roundedPrice - currentPrice) / currentPrice
-    newMomentum[stock.sector] = priceChange * 0.5 + (newMomentum[stock.sector] || 0) * 0.5
+    newMomentum[stock.sector] = priceChange * 0.4 + (newMomentum[stock.sector] || 0) * 0.3
     priceChanges[stock.id] = priceChange
   }
 
@@ -498,13 +510,16 @@ export function tickMarket(
   // 섹터별 뉴스 보너스 (현재 활성 효과에서)
   const sectorBonus: Record<string, number> = {}
   for (const effect of state.activeEffects) {
+    const maxDur = Math.max(...effect.sectorImpacts.map(si => si.duration), 1)
+    const elapsed = Math.max(0, maxDur - effect.remainingTurns)
+    const rampFactor = Math.min(1, 0.4 + elapsed * 0.3)
     for (const si of effect.sectorImpacts) {
       if (si.sector === 'all') {
         for (const s of ['tech', 'energy', 'finance', 'consumer', 'healthcare']) {
-          sectorBonus[s] = (sectorBonus[s] || 0) + si.impact * 0.02 // 틱당 2% 적용
+          sectorBonus[s] = (sectorBonus[s] || 0) + si.impact * 0.01 * rampFactor
         }
       } else {
-        sectorBonus[si.sector] = (sectorBonus[si.sector] || 0) + si.impact * 0.02
+        sectorBonus[si.sector] = (sectorBonus[si.sector] || 0) + si.impact * 0.01 * rampFactor
       }
     }
   }
@@ -527,7 +542,7 @@ export function tickMarket(
     const herdEffect = state.herdSentiment * 0.0005
 
     // 평균 회귀 (가격이 기준에서 멀어질수록 당김)
-    const meanReversionStrength = 0.003
+    const meanReversionStrength = 0.005
     const deviation = (currentPrice - stock.basePrice) / stock.basePrice
     const meanReversion = -deviation * meanReversionStrength
 
@@ -603,9 +618,10 @@ export function tickMarket(
       const prev = state.prices[id] || 1
       return sum + (newPrices[id] - prev) / prev
     }, 0) / Object.keys(newPrices).length
-    const drift = avgReturn * 20
+    const drift = avgReturn * 12
     const sentimentNoise = (rng() - 0.5) * 0.01
-    newHerdSentiment = state.herdSentiment * 0.98 + drift + sentimentNoise
+    const sentimentMeanRevert = -state.herdSentiment * 0.02
+    newHerdSentiment = state.herdSentiment * 0.95 + drift + sentimentNoise + sentimentMeanRevert
     newHerdSentiment = Math.max(-1, Math.min(1, newHerdSentiment))
   }
 

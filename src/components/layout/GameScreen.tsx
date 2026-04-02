@@ -23,12 +23,13 @@ import { PhaseProgressBar } from '../ui/PhaseProgressBar'
 import { PhaseCTA } from '../ui/PhaseCTA'
 import { NewsReferenceDrawer } from '../ui/NewsReferenceDrawer'
 import { ScoreCascade } from '../effects/ScoreCascade'
-import { SpotlightTutorial } from '../tutorial/SpotlightTutorial'
+import { UnifiedGuide } from '../tutorial/UnifiedGuide'
 import { SECTOR_COLORS } from '../../data/constants'
 import { MarketConditionModal } from '../ui/MarketConditionModal'
 import { MarketPulseBar } from '../ui/MarketPulseBar'
 import { detectStockCondition } from '../../engine/marketCondition'
 import { SFX, bgm } from '../../utils/sound'
+import { NewsAnalystView } from '../news/NewsAnalystView'
 
 const INITIAL_CASH = 10000
 
@@ -38,7 +39,6 @@ export function GameScreen() {
     currentNews, selectedStockId, selectStock,
     advanceToInvestmentPhase, executeBuy, executeSell,
     advanceToResultPhase, nextTurn,
-    showTutorial, tutorialStep, advanceTutorial, dismissTutorial,
     unlockedSkills, currentSpecialEvent,
     inventory, useItem, openShop, visitedShopThisTurn,
     breakingNews, breakingNewsDismissed,
@@ -206,7 +206,7 @@ export function GameScreen() {
         {/* ═══ 상단 바: 자산 정보 ═══ */}
         <div className="flex items-center justify-between px-2 pt-1 pb-0 flex-shrink-0" style={{ background: 'rgba(21,21,40,0.9)' }}>
           {/* 좌측: 자산 정보 */}
-          <div className="flex items-center gap-2 px-1" data-tutorial="asset-bar">
+          <div className="flex items-center gap-2 px-1" data-guide="asset-bar">
             <BalChip color="gold" label="현금" small>${Math.floor(portfolio.cash).toLocaleString()}</BalChip>
             <BalChip color={isPositive ? 'green' : 'red'} label="수익률" small>
               {isPositive ? '+' : ''}{(totalReturn * 100).toFixed(1)}%
@@ -276,23 +276,17 @@ export function GameScreen() {
         <div className="flex-1 min-h-0 flex flex-col">
           <AnimatePresence mode="wait">
             {phase === 'news' ? (
-              /* ────── 뉴스 페이즈: 풀 와이드 뉴스 ────── */
+              /* ────── 뉴스 페이즈: 뉴스 분석관 ────── */
               <motion.div
                 key="news"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.2 }}
-                className="flex-1 min-h-0 flex flex-col p-2 gap-2 bg-[rgba(10,10,20,0.75)] rounded-lg"
+                className="flex-1 min-h-0 flex flex-col"
+                data-guide="news-panel"
               >
-                <div data-tutorial="news-panel" className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                  <BalPanel label="이번 주 뉴스" className="flex-1 min-h-0 overflow-hidden">
-                    <NewsPanel news={currentNews} unlockedSkills={unlockedSkills} />
-                  </BalPanel>
-                </div>
-                <div data-tutorial="sector-impact-summary">
-                  <SectorImpactSummary news={currentNews} />
-                </div>
+                <NewsAnalystView />
               </motion.div>
             ) : phase === 'investment' ? (
               /* ────── 투자 페이즈: 차트+트레이드 | 종목카드 | 포트폴리오 ────── */
@@ -304,10 +298,10 @@ export function GameScreen() {
                 transition={{ duration: 0.2 }}
                 className="game-dashboard game-dashboard--investment flex-1 min-h-0"
               >
-                <div data-tutorial="chart-panel" style={{ gridArea: 'chart', display: 'flex', flexDirection: 'column', minHeight: 0 }}>{chartPanel}</div>
+                <div data-guide="chart-panel" style={{ gridArea: 'chart', display: 'flex', flexDirection: 'column', minHeight: 0 }}>{chartPanel}</div>
 
                 {/* 매매 패널 (사이드바) */}
-                <div style={{ gridArea: 'trade', minHeight: 0, overflow: 'auto' }} data-tutorial="trade-panel">
+                <div style={{ gridArea: 'trade', minHeight: 0, overflow: 'auto' }} data-guide="trade-panel">
                   <TradePanel
                     stock={selectedStock}
                     currentPrice={currentPrice}
@@ -367,9 +361,9 @@ export function GameScreen() {
             )}
           </AnimatePresence>
 
-          {/* ═══ 하단 CTA 버튼 (결과 페이즈는 캐스케이드 내 버튼 사용) ═══ */}
-          {phase !== 'result' && (
-            <div className="flex-shrink-0 px-2 pb-2" data-tutorial="phase-cta">
+          {/* ═══ 하단 CTA 버튼 (뉴스/결과 페이즈는 자체 CTA 사용) ═══ */}
+          {phase !== 'result' && phase !== 'news' && (
+            <div className="flex-shrink-0 px-2 pb-2" data-guide="phase-cta">
               <PhaseCTA
                 phase={phase}
                 onAdvanceToInvestment={handleAdvanceToInvestment}
@@ -393,7 +387,7 @@ export function GameScreen() {
         )}
       </AnimatePresence>
 
-      <SpotlightTutorial />
+      <UnifiedGuide onNavigate={() => {}} />
 
       <AnimatePresence>{currentSpecialEvent && <SpecialEventOverlay />}</AnimatePresence>
 
