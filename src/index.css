@@ -3498,345 +3498,287 @@ body {
   box-shadow: 0 0 12px rgba(232, 83, 74, 0.1);
 }
 /* ═══════════════════════════════════════════
-   컷신 오프닝
+   시네마틱 컷씬 (Cinematic Cutscene)
    ═══════════════════════════════════════════ */
-.cutscene-root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
+
+/* ── 루트 ── */
+.cin-root {
+  position: fixed; inset: 0;
+  z-index: 100;
+  background: #000;
   cursor: pointer;
   user-select: none;
-}
-.cutscene-skip {
-  position: fixed;
-  top: 16px;
-  right: 20px;
-  z-index: 20;
-  font-family: var(--font-family-pixel);
-  font-size: 11px;
-  color: rgba(255,255,255,0.35);
-  background: none;
-  border: 1px solid rgba(255,255,255,0.1);
-  padding: 6px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.cutscene-skip:hover {
-  color: white;
-  border-color: rgba(255,255,255,0.3);
-  background: rgba(255,255,255,0.05);
+  overflow: hidden;
 }
 
-/* 장면 공통 */
-.cutscene-scene {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 640px;
-  padding: 24px;
-  gap: 24px;
+/* ── 스킵 ── */
+.cin-skip {
+  position: fixed; top: 16px; right: 20px; z-index: 120;
+  font-family: var(--font-family-pixel);
+  font-size: 10px; color: rgba(255,255,255,0.3);
+  background: none; border: 1px solid rgba(255,255,255,0.08);
+  padding: 5px 12px; border-radius: 4px;
+  cursor: pointer; transition: all 0.2s;
+  letter-spacing: 1px;
+}
+.cin-skip:hover { color: white; border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); }
+
+/* ── 씬 컨테이너 ── */
+.cin-scene {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
 }
 
-/* 장면 0: 로고 */
-.cutscene-logo {
-  gap: 16px;
+/* ── 풀스크린 배경 ── */
+.cin-bg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+  z-index: 0;
 }
-.cutscene-title {
-  font-family: var(--font-family-pixel);
-  font-size: 42px;
-  font-weight: 900;
-  color: var(--color-bal-gold);
-  letter-spacing: 8px;
-  text-shadow: 0 0 40px rgba(240,180,41,0.4), 0 0 80px rgba(240,180,41,0.15);
-  text-align: center;
-}
-.cutscene-subtitle {
-  font-family: var(--font-family-pixel);
-  font-size: 11px;
-  color: rgba(255,255,255,0.4);
-  letter-spacing: 2px;
+.cin-bg-cosmic {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, #1e1045 0%, #0a0a1a 60%, #000 100%);
+  z-index: 0;
 }
 
-/* 글리치 오버레이 (로고 장면용) */
-.cutscene-glitch-overlay {
-  position: fixed;
-  inset: 0;
+/* ── 비네트 오버레이 ── */
+.cin-vignette {
+  position: absolute; inset: 0; z-index: 1;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
   pointer-events: none;
-  z-index: 15;
 }
-.cutscene-glitch-scanlines {
-  position: absolute;
-  inset: 0;
+
+/* ── 캐릭터 ── */
+.cin-character {
+  position: absolute; z-index: 5;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+  transform-origin: bottom center;
+}
+
+/* ── CRT 스캔라인 (로고 씬) ── */
+.cin-glitch-scanlines {
+  position: absolute; inset: 0; z-index: 8;
+  pointer-events: none;
   background: repeating-linear-gradient(
-    0deg,
-    transparent 0px,
-    rgba(0, 0, 0, 0.15) 1px,
-    transparent 2px,
-    transparent 4px
+    0deg, transparent 0px, rgba(0,0,0,0.15) 1px, transparent 2px, transparent 4px
   );
-  animation: cutscene-scanline-scroll 0.1s linear infinite;
+  animation: cin-scanline-scroll 0.1s linear infinite;
 }
-@keyframes cutscene-scanline-scroll {
+@keyframes cin-scanline-scroll {
   0% { background-position-y: 0; }
   100% { background-position-y: 4px; }
 }
-.cutscene-glitch-rgb {
-  position: absolute;
-  inset: 0;
-  animation: cutscene-rgb-shift 3s ease-in-out infinite;
-  mix-blend-mode: screen;
-  opacity: 0.08;
-}
-@keyframes cutscene-rgb-shift {
-  0%, 90%, 100% { box-shadow: none; }
-  92% { box-shadow: -3px 0 0 rgba(255,0,0,0.5), 3px 0 0 rgba(0,0,255,0.5); }
-  94% { box-shadow: 2px 0 0 rgba(255,0,0,0.3), -2px 0 0 rgba(0,0,255,0.3); }
-  96% { box-shadow: none; }
-}
 
-/* 캐릭터 */
-.cutscene-character {
-  width: 128px;
-  height: 128px;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 0 16px rgba(240,180,41,0.3));
-}
-.cutscene-mentor-walk {
-  position: relative;
-}
-.cutscene-mentor-static {
-  position: relative;
-  display: flex;
-  justify-content: center;
-}
-
-/* 대화 박스 */
-.cutscene-dialogue {
-  width: min(90vw, 520px);
-  background: linear-gradient(180deg, rgba(20,20,40,0.95), rgba(12,12,30,0.98));
-  border: 2px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
-  padding: 14px 20px;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-}
-.cutscene-dialogue--bottom {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-}
-.cutscene-speaker {
-  display: block;
+/* ── 로고 타이틀 ── */
+.cin-title {
+  position: relative; z-index: 10;
   font-family: var(--font-family-pixel);
-  font-size: 12px;
-  font-weight: bold;
-  color: #7ec8f7;
-  text-shadow: 0 0 10px rgba(126,200,247,0.3);
-  margin-bottom: 6px;
-}
-.cutscene-text {
-  font-family: var(--font-family-pixel);
-  font-size: 13px;
-  line-height: 1.7;
-  color: rgba(255,255,255,0.9);
-  white-space: pre-wrap;
-  min-height: 24px;
-  margin: 0;
-}
-.cutscene-cursor {
-  color: #7ec8f7;
-  margin-left: 2px;
-  animation: cutscene-blink 0.4s steps(2) infinite;
-}
-@keyframes cutscene-blink {
-  0% { opacity: 1; }
-  50% { opacity: 0; }
-}
-.cutscene-next-hint {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  font-family: var(--font-family-pixel);
-  font-size: 9px;
-  color: rgba(255,255,255,0.3);
-}
-
-/* 장면 2: 분기별 목표 */
-.cutscene-mission {
-  position: relative;
-  min-height: 400px;
-}
-.cutscene-quarters {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  width: min(90vw, 520px);
-}
-.cutscene-quarter-header {
-  display: grid;
-  grid-template-columns: 1.8fr 0.7fr 0.7fr 0.7fr 0.9fr;
-  gap: 4px;
-  padding: 3px 10px;
-  font-family: var(--font-family-pixel);
-  font-size: 9px;
-  color: rgba(255,255,255,0.3);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.cutscene-quarter-row {
-  display: grid;
-  grid-template-columns: 1.8fr 0.7fr 0.7fr 0.7fr 0.9fr;
-  gap: 4px;
-  align-items: center;
-  padding: 5px 10px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 3px;
-  font-family: var(--font-family-pixel);
-  font-size: 10px;
-}
-.cutscene-quarter-name {
-  color: rgba(255,255,255,0.6);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.cutscene-quarter-target {
+  font-size: 48px; font-weight: 900;
   color: var(--color-bal-gold);
-  font-weight: bold;
+  letter-spacing: 10px;
+  text-shadow: 0 0 60px rgba(240,180,41,0.5), 0 0 120px rgba(240,180,41,0.2);
   text-align: center;
 }
-.cutscene-quarter-vol {
-  color: rgba(255,180,100,0.7);
-  text-align: center;
-  font-size: 9px;
-}
-.cutscene-quarter-fake {
-  color: rgba(255,100,100,0.6);
-  text-align: center;
-  font-size: 9px;
-}
-.cutscene-quarter-grade {
-  font-weight: bold;
-  text-align: center;
-  font-size: 9px;
-  letter-spacing: 0.5px;
-}
-
-/* 장면 3: 핵심 룰 카드 */
-.cutscene-cards {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.cutscene-card {
-  width: 160px;
-  transform-style: preserve-3d;
-  cursor: default;
-}
-.cutscene-card-inner {
-  background: linear-gradient(145deg, rgba(30,30,55,0.95), rgba(18,18,38,0.98));
-  border: 2px solid rgba(240,180,41,0.3);
-  border-radius: 8px;
-  padding: 20px 14px;
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 20px rgba(240,180,41,0.05);
-}
-.cutscene-card-number {
-  font-family: var(--font-family-pixel);
-  font-size: 32px;
-  font-weight: 900;
-  color: var(--color-bal-gold);
-  margin-bottom: 8px;
-  text-shadow: 0 0 15px rgba(240,180,41,0.3);
-}
-.cutscene-card-title {
-  font-family: var(--font-family-pixel);
-  font-size: 13px;
-  font-weight: bold;
-  color: white;
-  margin: 0 0 8px;
-}
-.cutscene-card-desc {
-  font-family: var(--font-family-pixel);
-  font-size: 10px;
-  line-height: 1.6;
-  color: rgba(255,255,255,0.6);
-  white-space: pre-wrap;
-  margin: 0;
-}
-
-/* 장면 4: 출근 */
-.cutscene-depart {
-  position: relative;
-  min-height: 400px;
-}
-.cutscene-bg-charts {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  padding: 40px;
-  pointer-events: none;
-  z-index: 0;
-}
-.cutscene-bg-chart {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.cutscene-bg-ticker {
-  font-family: var(--font-family-pixel);
-  font-size: 9px;
-  color: rgba(255,255,255,0.3);
-}
-.cutscene-quarter-title {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  z-index: 5;
-}
-.cutscene-qt-label {
+.cin-title-sub {
+  position: relative; z-index: 10;
   font-family: var(--font-family-pixel);
   font-size: 11px;
   color: rgba(255,255,255,0.4);
-  letter-spacing: 4px;
+  letter-spacing: 3px;
+  margin-top: 16px;
 }
-.cutscene-qt-name {
-  font-family: var(--font-family-pixel);
-  font-size: 28px;
-  font-weight: 900;
-  color: var(--color-bal-gold);
-  text-shadow: 0 0 30px rgba(240,180,41,0.3);
+
+/* ── 시네마 자막 영역 ── */
+.cin-subtitle-area {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  z-index: 10;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  padding-bottom: 48px;
+  min-height: 120px;
+  pointer-events: none;
 }
-.cutscene-qt-target {
+.cin-subtitle-gradient {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 160px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.85));
+  pointer-events: none;
+}
+.cin-subtitle-text {
+  position: relative; z-index: 1;
   font-family: var(--font-family-pixel);
-  font-size: 13px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: rgba(255,255,255,0.95);
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.5);
+  max-width: 600px;
+  padding: 0 24px;
+  margin: 0;
+}
+.cin-cursor {
   color: rgba(255,255,255,0.6);
+  margin-left: 1px;
+  animation: cin-blink 0.5s steps(2) infinite;
+}
+@keyframes cin-blink { 0% { opacity: 1; } 50% { opacity: 0; } }
+
+/* ── 다음 힌트 ── */
+.cin-next-hint {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 110;
+  font-family: var(--font-family-pixel);
+  font-size: 14px; color: rgba(255,255,255,0.3);
+}
+
+/* ── 씬 인디케이터 도트 ── */
+.cin-scene-dots {
+  position: fixed; bottom: 12px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 110;
+  display: flex; gap: 6px;
+}
+.cin-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  transition: all 0.3s;
+}
+.cin-dot--active {
+  background: var(--color-bal-gold);
+  box-shadow: 0 0 6px rgba(240,180,41,0.5);
+  width: 8px; height: 8px;
+}
+.cin-dot--done { background: rgba(240,180,41,0.4); }
+
+/* ═══ 오버레이: 난이도 테이블 ═══ */
+.cin-overlay-table {
+  position: absolute; z-index: 6;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; gap: 3px;
+  width: min(90vw, 480px);
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 16px;
+}
+.cin-table-header {
+  display: grid;
+  grid-template-columns: 1.8fr 0.7fr 0.7fr 0.7fr 0.7fr;
+  gap: 4px; padding: 3px 8px;
+  font-family: var(--font-family-pixel);
+  font-size: 9px; color: rgba(255,255,255,0.3);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.cin-table-row {
+  display: grid;
+  grid-template-columns: 1.8fr 0.7fr 0.7fr 0.7fr 0.7fr;
+  gap: 4px; align-items: center;
+  padding: 5px 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 3px;
+  font-family: var(--font-family-pixel);
+  font-size: 10px; color: rgba(255,255,255,0.6);
+}
+.cin-table-target {
+  color: var(--color-bal-gold); font-weight: bold; text-align: center;
+}
+
+/* ═══ 오버레이: 규칙 카드 ═══ */
+.cin-overlay-cards {
+  position: absolute; z-index: 6;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; gap: 16px;
+  justify-content: center; flex-wrap: wrap;
+}
+.cin-rule-card {
+  width: 160px;
+  background: linear-gradient(145deg, rgba(20,20,45,0.95), rgba(10,10,28,0.98));
+  border: 2px solid rgba(240,180,41,0.25);
+  border-radius: 8px;
+  padding: 20px 14px; text-align: center;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 20px rgba(240,180,41,0.05);
+  transform-style: preserve-3d;
+  backdrop-filter: blur(4px);
+}
+.cin-rule-number {
+  font-family: var(--font-family-pixel);
+  font-size: 36px; font-weight: 900;
+  color: var(--color-bal-gold);
+  text-shadow: 0 0 20px rgba(240,180,41,0.3);
+  margin-bottom: 8px;
+}
+.cin-rule-title {
+  font-family: var(--font-family-pixel);
+  font-size: 13px; font-weight: bold;
+  color: white; margin: 0 0 8px;
+}
+.cin-rule-desc {
+  font-family: var(--font-family-pixel);
+  font-size: 10px; line-height: 1.6;
+  color: rgba(255,255,255,0.55);
+  white-space: pre-wrap; margin: 0;
+}
+
+/* ═══ 오버레이: 분기 타이틀 ═══ */
+.cin-bg-charts {
+  position: absolute; inset: 0; z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px; padding: 60px 40px;
+  pointer-events: none;
+}
+.cin-bg-chart {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+}
+.cin-bg-ticker {
+  font-family: var(--font-family-pixel);
+  font-size: 9px; color: rgba(255,255,255,0.25);
+}
+.cin-quarter-title {
+  position: absolute; z-index: 6;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
+}
+.cin-qt-label {
+  font-family: var(--font-family-pixel);
+  font-size: 12px; color: rgba(255,255,255,0.4);
+  letter-spacing: 6px;
+}
+.cin-qt-name {
+  font-family: var(--font-family-pixel);
+  font-size: 36px; font-weight: 900;
+  color: var(--color-bal-gold);
+  text-shadow: 0 0 40px rgba(240,180,41,0.4), 0 0 80px rgba(240,180,41,0.15);
+}
+.cin-qt-target {
+  font-family: var(--font-family-pixel);
+  font-size: 14px; color: rgba(255,255,255,0.6);
 }
 
 /* CRT 글리치 모드 (CRTOverlay) */
 .crt-glitch-rgb {
   position: absolute;
   inset: 0;
-  animation: cutscene-rgb-shift 3s ease-in-out infinite;
+  animation: cin-rgb-shift 3s ease-in-out infinite;
   mix-blend-mode: screen;
   opacity: 0.06;
+}
+@keyframes cin-rgb-shift {
+  0%, 90%, 100% { box-shadow: none; }
+  92% { box-shadow: -3px 0 0 rgba(255,0,0,0.5), 3px 0 0 rgba(0,0,255,0.5); }
+  94% { box-shadow: 2px 0 0 rgba(255,0,0,0.3), -2px 0 0 rgba(0,0,255,0.3); }
+  96% { box-shadow: none; }
 }
 
 /* ═══════════════════════════════════════════
