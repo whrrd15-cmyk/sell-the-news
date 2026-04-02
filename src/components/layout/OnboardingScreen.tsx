@@ -8,6 +8,7 @@ import { MiniSparkline } from '../stocks/MiniSparkline'
 import {
   CUTSCENE_SCENES,
   CHARACTER_SPRITES,
+  WALK_FRAMES,
   DIFFICULTY_TABLE,
   RULE_CARDS,
   type CutsceneScene,
@@ -27,12 +28,24 @@ export function OnboardingScreen() {
   const [isTyping, setIsTyping] = useState(false)
   const [subtitleReady, setSubtitleReady] = useState(false)
 
+  // walk 프레임 순환
+  const [walkFrame, setWalkFrame] = useState(0)
+
   // 오버레이 상태
   const [flippedCards, setFlippedCards] = useState<number[]>([])
   const [visibleQuarters, setVisibleQuarters] = useState(0)
   const [chartProgress, setChartProgress] = useState(0)
 
   const scene = CUTSCENE_SCENES[sceneIndex]
+  const hasWalkingChar = scene.characters.some(c => c.animation === 'walk')
+
+  // ─── walk 프레임 순환 (120ms 간격) ───
+  useEffect(() => {
+    if (!hasWalkingChar) return
+    setWalkFrame(0)
+    const interval = setInterval(() => setWalkFrame(f => (f + 1) % 6), 120)
+    return () => clearInterval(interval)
+  }, [hasWalkingChar, sceneIndex])
 
   // ─── 자막 딜레이 후 타이핑 시작 ───
   useEffect(() => {
@@ -178,7 +191,11 @@ export function OnboardingScreen() {
 
           {/* ═══ 캐릭터 ═══ */}
           {scene.characters.map((char, idx) => {
-            const sprite = CHARACTER_SPRITES[char.id]?.[char.animation]
+            // walk 애니메이션 프레임이 있으면 순환, 없으면 정적 스프라이트
+            const walkFrames = char.animation === 'walk' ? WALK_FRAMES[char.id] : null
+            const sprite = walkFrames
+              ? walkFrames[walkFrame % walkFrames.length]
+              : CHARACTER_SPRITES[char.id]?.[char.animation]
             const scale = char.scale ?? 2.5
             const positionX = char.position === 'left' ? '20%'
               : char.position === 'right' ? '70%' : '45%'

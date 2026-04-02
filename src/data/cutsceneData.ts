@@ -87,7 +87,7 @@ export const CUTSCENE_SCENES: CutsceneScene[] = [
   },
 ]
 
-// 캐릭터 스프라이트 경로
+// 캐릭터 스프라이트 경로 (정적)
 export const CHARACTER_SPRITES: Record<string, Record<string, string>> = {
   mentor: {
     idle: '/cutscene/mentor-south.png',
@@ -97,6 +97,15 @@ export const CHARACTER_SPRITES: Record<string, Record<string, string>> = {
     idle: '/cutscene/intern-south.png',
     walk: '/cutscene/intern-east.png',
   },
+}
+
+// walk 애니메이션 프레임 (6프레임 순환)
+const WALK_FRAME_COUNT = 6
+export const WALK_FRAMES: Record<string, string[]> = {
+  mentor: Array.from({ length: WALK_FRAME_COUNT }, (_, i) =>
+    `/cutscene/mentor-walk-east/frame_${String(i).padStart(3, '0')}.png`
+  ),
+  // 인턴 walk 프레임은 추후 추가 (현재 정적 스프라이트 사용)
 }
 
 // 난이도 테이블 데이터 (기존 OnboardingScreen에서 이동)
