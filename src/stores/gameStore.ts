@@ -18,10 +18,11 @@ import type {
   AutoTradeResult,
   NewsJudgment,
   JudgmentType,
+  TradeRecord,
 } from '../data/types'
 import { RUN_CONFIGS } from '../data/types'
 import { createInitialMarketState, generatePreviousQuarter, simulateTurn, applyNewsEffect, calculateDangerLevel, type MarketState, type PriceChangeBreakdown, type EffectHistoryEntry } from '../engine/market'
-import { createInitialPortfolio, buyStock, sellStock, awardReputation } from '../engine/portfolio'
+import { createInitialPortfolio, buyStock, sellStock, awardReputation, getPortfolioValue } from '../engine/portfolio'
 import { generateTurnNews } from '../engine/news'
 import { rollSpecialEvent, QUIZ_EVENTS } from '../data/specialEvents'
 import { rollBreakingNews } from '../data/breakingNews'
@@ -31,6 +32,8 @@ import { writeSaveData, deleteSaveData, type SaveData } from '../utils/save'
 import { generateShopItems } from '../data/items'
 import { STOCKS } from '../data/stocks'
 import { useMacroStore } from './macroStore'
+import { useTimeStore } from './timeStore'
+import { formatWeekDay } from '../engine/clock'
 import { detectSectorConditions } from '../engine/marketCondition'
 import { processAutoTrades } from '../engine/autoTrade'
 
@@ -76,6 +79,10 @@ interface GameState {
   predictions: Record<string, 'up' | 'down'> | null
   lastTrade: { stockId: string; type: 'buy' | 'sell'; amount: number; price: number; prevPosition: { shares: number; avgBuyPrice: number } | null } | null
   lastTradeError: string | null
+  tradeHistory: TradeRecord[]
+  portfolioValueHistory: number[]
+  totalFees: number
+  realizedPnL: number
   tradesThisTurn: number
   visitedShopThisTurn: boolean
 
@@ -204,6 +211,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   predictions: null,
   lastTrade: null,
   lastTradeError: null,
+  tradeHistory: [],
+  portfolioValueHistory: [],
+  totalFees: 0,
+  realizedPnL: 0,
   tradesThisTurn: 0,
   visitedShopThisTurn: false,
   usedQuizIds: new Set<string>(),
@@ -384,9 +395,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   executeBuy: (stockId, amount) => {
-    const { portfolio, market, tradesThisTurn, unlockedSkills } = get()
-    const tradeLimit = unlockedSkills.includes('double_trade') ? 2 : 1
-    if (tradesThisTurn >= tradeLimit) return
+    const { portfolio, market, unlockedSkills } = get()
     const price = market.prices[stockId]
     if (price == null || price <= 0) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
@@ -399,7 +408,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     set({
       portfolio: newPortfolio,
-      tradesThisTurn: tradesThisTurn + 1,
       lastTradeError: null,
       lastTrade: {
         stockId, type: 'buy', amount, price,
@@ -409,11 +417,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   executeSell: (stockId, shares) => {
-    const { portfolio, market, currentWeeklyRule, tradesThisTurn, unlockedSkills } = get()
+    const { portfolio, market, currentWeeklyRule, unlockedSkills } = get()
     // 주간 규칙: 매도 금지
     if (currentWeeklyRule?.effect.type === 'no_selling') return
-    const tradeLimit = unlockedSkills.includes('double_trade') ? 2 : 1
-    if (tradesThisTurn >= tradeLimit) return
     const price = market.prices[stockId]
     if (price == null || price <= 0) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
@@ -426,7 +432,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     set({
       portfolio: newPortfolio,
-      tradesThisTurn: tradesThisTurn + 1,
       lastTradeError: null,
       lastTrade: {
         stockId, type: 'sell', amount: shares, price,
@@ -809,6 +814,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
+    const currentValue = getPortfolioValue(get().portfolio, get().market.prices)
+
     set({
       turn: newTurn,
       phase: 'news',
@@ -830,6 +837,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       newsJudgments: [],
       currentNewsIndex: 0,
       allNewsJudged: false,
+      portfolioValueHistory: [...get().portfolioValueHistory, currentValue],
     })
 
     // 자동 저장

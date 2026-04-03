@@ -6,13 +6,16 @@ import { useGameStore } from '../../stores/gameStore'
 import { STOCKS } from '../../data/stocks'
 import { getPortfolioValue, getTotalReturn } from '../../engine/portfolio'
 import RealtimeLineChart from '../charts/RealtimeLineChart'
+import CandlestickChart from '../charts/CandlestickChart'
 import { BalPanel } from '../ui/BalPanel'
 import { TradingPanel } from '../trade/TradingPanel'
 import type { ShortPosition, LeveragedPosition, LimitOrder } from '../../data/types'
 import { openShort, coverShort, buyWithLeverage, closeLeveragedPosition, checkOrderFill } from '../../engine/portfolio'
 import { StockTabBar } from '../trade/StockTabBar'
 import { OrderBookPanel } from '../trade/OrderBookPanel'
-import { TradeLogPanel } from '../trade/TradeLogPanel'
+import { BottomPanel } from '../trade/BottomPanel'
+import { generateMarketTrades } from '../../engine/marketTrades'
+import type { MarketTrade } from '../../data/types'
 import { MarketConditionModal } from '../ui/MarketConditionModal'
 import { SidebarNav, type PageId } from './SidebarNav'
 import { NewsPage } from '../pages/NewsPage'
@@ -28,6 +31,8 @@ import { useNewsStore } from '../../stores/newsStore'
 import { InventoryDropdown } from '../ui/InventoryDropdown'
 import { ShopIcon } from '../icons/SkillIcons'
 import { SpecialEventOverlay } from './SpecialEventOverlay'
+import { TickerTape } from '../stocks/TickerTape'
+import { SectorHeatmap } from '../stocks/SectorHeatmap'
 import { SECTOR_COLORS } from '../../data/constants'
 import { detectStockCondition } from '../../engine/marketCondition'
 import { formatGameTime, getQuarterProgress, getMarketSession } from '../../engine/clock'
@@ -81,6 +86,13 @@ export function TradingTerminal() {
     pickedStockId,
   } = useGameStore()
 
+  const [marketTrades, setMarketTrades] = useState<MarketTrade[]>([])
+  const tradeHistory = useGameStore(s => s.tradeHistory)
+  const totalFeesVal = useGameStore(s => s.totalFees)
+  const realizedPnLVal = useGameStore(s => s.realizedPnL)
+  const portfolioValueHistory = useGameStore(s => s.portfolioValueHistory)
+  const lastTrade = useGameStore(s => s.lastTrade)
+
   // ═══ 초기화 ═══
   const initialized = useRef(false)
   useEffect(() => {
@@ -126,6 +138,38 @@ export function TradingTerminal() {
       }
     })
   }, [timeSubscribe, handleClockEvents, newsHandleClock, generateWeekPool])
+
+  // 시뮬레이션 체결 생성 (장중에만)
+  useEffect(() => {
+    if (!gameTime || gameTime.hour < 9 || gameTime.hour >= 16) return
+    const newTrades = generateMarketTrades(
+      gameTime.tickCount,
+      market.prices,
+      market.herdSentiment,
+      gameTime.hour,
+      gameTime.minute,
+    )
+    setMarketTrades(prev => [...prev.slice(-47), ...newTrades])
+  }, [gameTime.tickCount]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 유저 거래 시 체결내역에 삽입
+  useEffect(() => {
+    if (!lastTrade) return
+    const stock = STOCKS.find(s => s.id === lastTrade.stockId)
+    const hh = String(gameTime.hour).padStart(2, '0')
+    const mm = String(gameTime.minute).padStart(2, '0')
+    const ss = String(Math.floor(Math.random() * 60)).padStart(2, '0')
+    const userTrade: MarketTrade = {
+      time: `${hh}:${mm}:${ss}`,
+      stockId: lastTrade.stockId,
+      ticker: stock?.ticker ?? lastTrade.stockId,
+      side: lastTrade.type,
+      quantity: lastTrade.amount,
+      price: lastTrade.price,
+      isUserTrade: true,
+    }
+    setMarketTrades(prev => [...prev.slice(-49), userTrade])
+  }, [lastTrade]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ═══ 시장 데이터 (실시간 또는 기존 gameStore fallback) ═══
   const legacyMarket = useGameStore(s => s.market)
@@ -192,6 +236,12 @@ export function TradingTerminal() {
     obs.observe(el)
     return () => obs.disconnect()
   }, [])
+
+  // ═══ 차트 모드 ═══
+  const [chartType, setChartType] = useState<'line' | 'candle'>('line')
+  const [showMA, setShowMA] = useState(false)
+  const [showBollinger, setShowBollinger] = useState(false)
+  const hasTA = unlockedSkills.includes('technical_analysis')
 
   // ═══ 모달 ═══
   const [showMarketModal, setShowMarketModal] = useState(false)
@@ -529,6 +579,9 @@ export function TradingTerminal() {
             </div>
           </div>
 
+          {/* ═══ 틱 테이프 ═══ */}
+          <TickerTape />
+
           {/* ═══ 페이지 콘텐츠 ═══ */}
           <div className="flex-1 min-h-0 overflow-hidden">
             {activePage === 'trading' && (
@@ -562,15 +615,39 @@ export function TradingTerminal() {
                     accentColor={selectedStock ? SECTOR_COLORS[selectedStock.sector] : undefined}
                     className="flex flex-col h-full"
                   >
+                    {/* 차트 유형/지표 토글 */}
+                    <div className="chart-toolbar">
+                      <div className="chart-toolbar-group">
+                        <button className={`chart-toolbar-btn ${chartType === 'line' ? 'chart-toolbar-btn--active' : ''}`} onClick={() => setChartType('line')}>Line</button>
+                        <button className={`chart-toolbar-btn ${chartType === 'candle' ? 'chart-toolbar-btn--active' : ''}`} onClick={() => setChartType('candle')}>Candle</button>
+                      </div>
+                      {hasTA && chartType === 'candle' && (
+                        <div className="chart-toolbar-group">
+                          <button className={`chart-toolbar-btn ${showMA ? 'chart-toolbar-btn--active' : ''}`} onClick={() => setShowMA(!showMA)}>MA</button>
+                          <button className={`chart-toolbar-btn ${showBollinger ? 'chart-toolbar-btn--active' : ''}`} onClick={() => setShowBollinger(!showBollinger)}>BB</button>
+                        </div>
+                      )}
+                    </div>
                     <div ref={chartContainerRef} className="flex-1 min-h-0">
                       {selectedHistory.length > 0 && selectedStock ? (
-                        <RealtimeLineChart
-                          prices={selectedHistory}
-                          currentPrice={currentPrice}
-                          openPrice={openPrice}
-                          width={chartSize.w}
-                          height={chartSize.h}
-                        />
+                        chartType === 'candle' ? (
+                          <CandlestickChart
+                            prices={selectedHistory}
+                            volatility={selectedStock.volatility}
+                            width={chartSize.w}
+                            height={chartSize.h - 28}
+                            showMA={showMA && hasTA}
+                            showBollinger={showBollinger && hasTA}
+                          />
+                        ) : (
+                          <RealtimeLineChart
+                            prices={selectedHistory}
+                            currentPrice={currentPrice}
+                            openPrice={openPrice}
+                            width={chartSize.w}
+                            height={chartSize.h}
+                          />
+                        )
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-bal-text-dim text-sm">
                           종목을 선택하면 차트가 표시됩니다
@@ -592,14 +669,21 @@ export function TradingTerminal() {
                     activeOrders={activeOrders} onCreateOrder={handleCreateOrder} onCancelOrder={handleCancelOrder}
                     unlockedSkills={unlockedSkills} stockCondition={selectedStockCondition}
                     autoTradeRules={autoTradeRules} onAddAutoTradeRule={addAutoTradeRule} onRemoveAutoTradeRule={removeAutoTradeRule}
-                    tradesRemaining={(unlockedSkills.includes('double_trade') ? 2 : 1) - tradesThisTurn}
-                    tradeLimit={unlockedSkills.includes('double_trade') ? 2 : 1}
+                    tradesRemaining={99}
+                    tradeLimit={99}
                   />
                 </div>
 
                 {/* 체결/포지션 */}
                 <div className="trading-crt-panel" style={{ gridArea: 'log' }}>
-                  <TradeLogPanel portfolio={portfolio} prices={market.prices} />
+                  <BottomPanel
+                    portfolio={portfolio}
+                    prices={market.prices}
+                    tradeHistory={tradeHistory}
+                    totalFees={totalFeesVal}
+                    realizedPnL={realizedPnLVal}
+                    portfolioValueHistory={portfolioValueHistory}
+                  />
                 </div>
               </div>
             )}
@@ -631,6 +715,16 @@ export function TradingTerminal() {
                 week={gameTime.week}
                 marketTrend={market.marketTrend}
               />
+            )}
+
+            {activePage === 'market' && (
+              /* ════ 마켓 페이지: 섹터 히트맵 ════ */
+              <SectorHeatmap onSelectSector={(sector) => {
+                // 섹터 클릭 시 해당 섹터 첫 종목 선택 후 트레이딩으로 이동
+                const sectorStock = STOCKS.find(s => s.sector === sector && !s.isETF)
+                if (sectorStock) handleSelectStock(sectorStock.id)
+                setActivePage('trading')
+              }} />
             )}
 
           </div>

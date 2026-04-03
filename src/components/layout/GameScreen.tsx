@@ -312,8 +312,8 @@ export function GameScreen() {
                     onBuy={handleBuy}
                     onSell={handleSell}
                     sellDisabled={isNoSelling}
-                    tradesRemaining={(unlockedSkills.includes('double_trade') ? 2 : 1) - tradesThisTurn}
-                    tradeLimit={unlockedSkills.includes('double_trade') ? 2 : 1}
+                    tradesRemaining={99}
+                    tradeLimit={99}
                     unlockedSkills={unlockedSkills}
                     stockCondition={selectedStockCondition}
                     autoTradeRules={autoTradeRules}

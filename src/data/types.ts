@@ -372,6 +372,28 @@ export interface PriceHistory {
   prices: number[]  // 턴별 가격 히스토리
 }
 
+export interface TradeRecord {
+  id: string
+  timestamp: string     // formatWeekDay 결과 (e.g. "W3 월14:30")
+  stockId: string
+  ticker: string
+  side: 'buy' | 'sell'
+  quantity: number
+  price: number
+  fee: number
+  realizedPnL?: number  // 매도 시에만 존재
+}
+
+export interface MarketTrade {
+  time: string          // "HH:MM:SS" 형태
+  stockId: string
+  ticker: string
+  side: 'buy' | 'sell'
+  quantity: number
+  price: number
+  isUserTrade: boolean
+}
+
 export interface RunStats {
   totalTurns: number
   correctPredictions: number

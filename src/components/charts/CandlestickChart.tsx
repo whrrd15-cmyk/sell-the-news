@@ -5,14 +5,17 @@ import {
   ColorType,
   CandlestickSeries,
   HistogramSeries,
+  LineSeries,
   CrosshairMode,
   type IChartApi,
   type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type CandlestickData,
   type HistogramData,
+  type LineData,
   type Time,
 } from 'lightweight-charts'
+import { calculateSMA, calculateBollingerBands } from '../../engine/technicalIndicators'
 
 export interface ChartMarker {
   turnIndex: number
@@ -27,6 +30,8 @@ interface CandlestickChartProps {
   width?: number
   height?: number
   markers?: ChartMarker[]
+  showMA?: boolean
+  showBollinger?: boolean
 }
 
 interface CandleData {
@@ -70,11 +75,22 @@ const BALATRO = {
 const BASE_TIME = 1704067200 // 2024-01-01
 const DAY_SECONDS = 86400 * 7 // 1턴 = 1주
 
-export default function CandlestickChart({ prices, volatility = 0.3, width = 600, height = 300, markers = [] }: CandlestickChartProps) {
+// MA/Bollinger 색상
+const MA_COLORS = {
+  ma5: '#f0b429',   // gold
+  ma20: '#4dabf7',  // blue
+  ma60: '#e599f7',  // purple
+  bbUpper: 'rgba(232,83,74,0.5)',
+  bbMiddle: 'rgba(136,136,170,0.4)',
+  bbLower: 'rgba(94,194,105,0.5)',
+}
+
+export default function CandlestickChart({ prices, volatility = 0.3, width = 600, height = 300, markers = [], showMA = false, showBollinger = false }: CandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
+  const overlaySeriesRef = useRef<ISeriesApi<'Line'>[]>([])
   const priceLineRef = useRef<ReturnType<ISeriesApi<'Candlestick'>['createPriceLine']> | null>(null)
   const markersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
 
@@ -234,8 +250,74 @@ export default function CandlestickChart({ prices, volatility = 0.3, width = 600
       })
     }
 
+    // 기존 오버레이 시리즈 제거
+    for (const s of overlaySeriesRef.current) {
+      try { chartRef.current?.removeSeries(s) } catch { /* noop */ }
+    }
+    overlaySeriesRef.current = []
+
+    // 이동평균선 오버레이
+    if (showMA && prices.length >= 5) {
+      const maConfigs = [
+        { period: 5, color: MA_COLORS.ma5, label: 'MA5' },
+        { period: 20, color: MA_COLORS.ma20, label: 'MA20' },
+        { period: 60, color: MA_COLORS.ma60, label: 'MA60' },
+      ]
+      for (const { period, color } of maConfigs) {
+        if (prices.length < period) continue
+        const smaValues = calculateSMA(prices, period)
+        const lineData: LineData[] = []
+        for (let i = 0; i < smaValues.length; i++) {
+          if (smaValues[i] !== null && i > 0) {
+            lineData.push({ time: (BASE_TIME + (i - 1) * DAY_SECONDS) as Time, value: smaValues[i]! })
+          }
+        }
+        if (lineData.length > 0 && chartRef.current) {
+          const series = chartRef.current.addSeries(LineSeries, {
+            color,
+            lineWidth: 1,
+            crosshairMarkerVisible: false,
+            priceLineVisible: false,
+            lastValueVisible: false,
+          })
+          series.setData(lineData)
+          overlaySeriesRef.current.push(series)
+        }
+      }
+    }
+
+    // 볼린저 밴드 오버레이
+    if (showBollinger && prices.length >= 20) {
+      const bb = calculateBollingerBands(prices, 20, 2)
+      const bbLines = [
+        { data: bb.upper, color: MA_COLORS.bbUpper },
+        { data: bb.middle, color: MA_COLORS.bbMiddle },
+        { data: bb.lower, color: MA_COLORS.bbLower },
+      ]
+      for (const { data, color } of bbLines) {
+        const lineData: LineData[] = []
+        for (let i = 0; i < data.length; i++) {
+          if (data[i] !== null && i > 0) {
+            lineData.push({ time: (BASE_TIME + (i - 1) * DAY_SECONDS) as Time, value: data[i]! })
+          }
+        }
+        if (lineData.length > 0 && chartRef.current) {
+          const series = chartRef.current.addSeries(LineSeries, {
+            color,
+            lineWidth: 1,
+            lineStyle: 2,
+            crosshairMarkerVisible: false,
+            priceLineVisible: false,
+            lastValueVisible: false,
+          })
+          series.setData(lineData)
+          overlaySeriesRef.current.push(series)
+        }
+      }
+    }
+
     chartRef.current?.timeScale().fitContent()
-  }, [candles, markers])
+  }, [candles, markers, prices, showMA, showBollinger])
 
   if (candles.length === 0) {
     return (

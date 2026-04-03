@@ -36,3 +36,5 @@ npx
 
 # Docs (auto-generated)
 docs/superpowers/
+.superpowers/
+screenshots/
