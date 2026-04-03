@@ -41,14 +41,14 @@ export function SectorHeatmap({ onSelectSector }: SectorHeatmapProps) {
       <div className="sector-heatmap-title">SECTOR MAP</div>
       <div className="sector-heatmap-grid">
         {sectors.map(s => {
-          const intensity = Math.min(1, Math.abs(s.avgChange) * 2)
+          const intensity = Math.min(1, Math.abs(s.avgChange) * 3)
           const isUp = s.avgChange >= 0
           const bg = isUp
-            ? `rgba(94,194,105,${0.08 + intensity * 0.25})`
-            : `rgba(232,83,74,${0.08 + intensity * 0.25})`
+            ? `rgba(94,194,105,${0.12 + intensity * 0.35})`
+            : `rgba(232,83,74,${0.12 + intensity * 0.35})`
           const border = isUp
-            ? `rgba(94,194,105,${0.15 + intensity * 0.3})`
-            : `rgba(232,83,74,${0.15 + intensity * 0.3})`
+            ? `rgba(94,194,105,${0.25 + intensity * 0.4})`
+            : `rgba(232,83,74,${0.25 + intensity * 0.4})`
 
           return (
             <div
