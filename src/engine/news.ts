@@ -63,11 +63,13 @@ export function generateTurnNews(
   usedEventIds: Set<string>,
   weeklyRule?: WeeklyRule | null,
   gameSeed?: number,
+  cursedModifiers?: { extraNews?: boolean; extraFakeRatio?: number },
 ): { news: NewsCard[]; newChainEvents: ChainEvent[] } {
   const rng = seededRandom(turn * 3571 + config.runNumber * 17 + (gameSeed ?? 0))
   const impactfulCount = 2 + Math.floor(rng() * 2) // 실질 영향 뉴스 2~3개
   const extraNoise = weeklyRule?.effect.type === 'news_overload' ? weeklyRule.effect.extraNews : 0
-  const noiseCount = 3 + Math.floor(rng() * 3) + extraNoise // 노이즈 뉴스 3~5개 + 주간규칙 추가
+  const extraCursedNews = cursedModifiers?.extraNews ? 1 : 0
+  const noiseCount = 3 + Math.floor(rng() * 3) + extraNoise + extraCursedNews // 노이즈 뉴스 3~5개 + 주간규칙 추가
   const news: NewsCard[] = []
   const newChainEvents: ChainEvent[] = []
 
@@ -94,9 +96,10 @@ export function generateTurnNews(
       && (!blackoutSector || !t.sectorImpacts?.some(si => si.sector === blackoutSector)),
   )
 
+  const adjustedFakeRatio = Math.min(1, config.fakeNewsRatio + (cursedModifiers?.extraFakeRatio ?? 0))
   const remainingImpactful = impactfulCount - news.length
   for (let i = 0; i < remainingImpactful && availableImpactful.length > 0; i++) {
-    const isFake = rng() < config.fakeNewsRatio
+    const isFake = rng() < adjustedFakeRatio
     const template = weightedPick(availableImpactful, rng)
 
     if (isFake && template.fakeVariants && template.fakeVariants.length > 0) {

@@ -488,8 +488,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       updatedMarket = { ...updatedMarket, panicLevel: 0 }
     }
 
+    // 저주 아이템 업사이드: 변동성 자석 → 가격 변동폭 확대
+    const hasPriceSwings = equippedCursedItems.some(i => i.cursedEffect?.upside === 'increase_price_swings')
+    const simConfig = hasPriceSwings
+      ? { ...runConfig, volatilityMultiplier: runConfig.volatilityMultiplier * 1.5 }
+      : runConfig
+
     const macroEffects = useMacroStore.getState().sectorMacroEffects
-    const simResult = simulateTurn(updatedMarket, runConfig, turn, currentWeeklyRule, macroEffects)
+    const simResult = simulateTurn(updatedMarket, simConfig, turn, currentWeeklyRule, macroEffects)
     const newMarket = simResult.state
 
     // 캐스케이드: 종목별 가격 변화
@@ -692,7 +698,15 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   nextTurn: () => {
     const { turn, maxTurns, runConfig, pendingChainEvents, usedEventIds, usedSpecialEventIds, usedWeeklyRuleIds } = get()
+    const { equippedCursedItems } = get()
     const newTurn = turn + 1
+
+    // 저주 아이템: 뉴스 수정자
+    const hasExtraNews = equippedCursedItems.some(i => i.cursedEffect?.upside === 'extra_news')
+    const hasFomoBellDown = equippedCursedItems.some(i => i.cursedEffect?.downside === 'increase_fake_news_10')
+    const cursedNewsModifiers = (hasExtraNews || hasFomoBellDown)
+      ? { extraNews: hasExtraNews, extraFakeRatio: hasFomoBellDown ? 0.10 : 0 }
+      : undefined
 
     if (newTurn > maxTurns) {
       // 분기 완료 — 메타 진행 업데이트
@@ -750,6 +764,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         pendingChainEvents,
         usedEventIds,
         get().currentWeeklyRule,
+        undefined,
+        cursedNewsModifiers,
       )
       const remainingChains = pendingChainEvents.filter(
         (c) => c.triggersAtTurn > newTurn,
@@ -784,6 +800,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       pendingChainEvents,
       usedEventIds,
       weeklyRule,
+      undefined,
+      cursedNewsModifiers,
     )
 
     const remainingChains = pendingChainEvents.filter(
@@ -791,7 +809,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     )
 
     // 저주 아이템 업사이드: 매 턴 최고 종목 공개
-    const { equippedCursedItems } = get()
     let bestStockId: string | null = null
     if (equippedCursedItems.some(i => i.cursedEffect?.upside === 'reveal_best_stock_every_turn')) {
       const { market } = get()
