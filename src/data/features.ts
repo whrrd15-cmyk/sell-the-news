@@ -10,9 +10,9 @@ export const FEATURES = {
   /** 뉴스 드립: 일괄 생성 대신 시간별 발행 */
   NEWS_DRIP: true,
   /** 공매도 */
-  SHORT_SELLING: false,
+  SHORT_SELLING: true,
   /** 레버리지 */
-  LEVERAGE: false,
+  LEVERAGE: true,
   /** 지정가 주문 */
-  LIMIT_ORDERS: false,
+  LIMIT_ORDERS: true,
 } as const
