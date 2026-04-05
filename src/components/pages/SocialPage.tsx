@@ -4,6 +4,7 @@ import { generateSocialPosts, type SocialPost } from '../../engine/social'
 import { deriveIndicatorsFromMacro, type EconomicIndicator } from '../../engine/indicators'
 import { useMacroStore } from '../../stores/macroStore'
 import { AvatarIcon, HeartIcon, CommentIcon, ShareIcon, ChatBubbleIcon, ChartBarIcon, LightbulbIcon } from '../icons/SocialIcons'
+import { SectorCorrelationMatrix } from './SectorCorrelationMatrix'
 
 /**
  * 사회정보 페이지 — SNS 여론 + 경제 지표
@@ -58,7 +59,10 @@ export function SocialPage({ herdSentiment, panicLevel, tickCount, runNumber, we
         {activeTab === 'feed' ? (
           <SocialFeedFlat posts={posts} />
         ) : (
-          <IndicatorsTable indicators={indicators} />
+          <>
+            <IndicatorsTable indicators={indicators} />
+            <SectorCorrelationMatrix />
+          </>
         )}
       </div>
 
