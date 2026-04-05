@@ -6,12 +6,12 @@
 
 ## `generate-events.mjs` — 뉴스 이벤트 자동 생성
 
-Claude API로 `EventTemplate` JSON을 생성. 수동 검수 후 `src/data/events.ts`에 추가.
+OpenAI API로 `EventTemplate` JSON을 생성. 수동 검수 후 `src/data/events.ts`에 추가.
 
 ### 사전 준비
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-proj-...
 ```
 
 ### 사용법
@@ -45,7 +45,7 @@ node scripts/generate-events.mjs --help
 | `--sectors X,Y` | 영향 섹터 제한 | (무제한) |
 | `--min-difficulty N` | 최소 난이도 (1-8) | 1 |
 | `--with-fake` | fakeVariants 포함 | false |
-| `--model NAME` | Claude 모델 | claude-sonnet-4-5 |
+| `--model NAME` | OpenAI 모델 | gpt-5.4-nano |
 
 ### 출력
 
@@ -69,10 +69,10 @@ npx tsc --noEmit
 
 ### 생성 비용
 
-claude-sonnet-4-5 기준:
-- 입력 ~2K 토큰 (시스템 + 예시) — $0.006
-- 출력 ~3K 토큰 (10개 이벤트) — $0.045
-- **~$0.05 / 10개 이벤트**
+gpt-5.4-nano 기준 (저가 모델, 매우 저렴):
+- 입력 ~2K 토큰 (시스템 + 예시)
+- 출력 ~3K 토큰 (10개 이벤트)
+- **일반적으로 ~$0.001~0.005 / 10개 이벤트**
 
 ### 품질 체크리스트 (검수 시)
 

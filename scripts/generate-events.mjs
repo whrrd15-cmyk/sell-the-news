@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * 뉴스 이벤트 템플릿 자동 생성 스크립트 (LLM 개발 도구)
+ * 뉴스 이벤트 템플릿 자동 생성 스크립트 (OpenAI 개발 도구)
  *
  * 사용법:
- *   export ANTHROPIC_API_KEY=sk-ant-...
+ *   export OPENAI_API_KEY=sk-proj-...
  *   node scripts/generate-events.mjs --count 5 --category technology --with-fake
  *   node scripts/generate-events.mjs --count 10 --sectors tech,energy --min-difficulty 3
  *
@@ -132,11 +132,11 @@ Options:
   --sectors tech,energy  영향 섹터 제한
   --min-difficulty N     최소 난이도 (1-8, 기본 1)
   --with-fake            각 이벤트에 fakeVariant 1개 이상 생성
-  --model NAME           Claude 모델 (기본 claude-sonnet-4-5)
+  --model NAME           OpenAI 모델 (기본 gpt-5.4-nano)
   --help                 이 메시지 표시
 
 환경변수:
-  ANTHROPIC_API_KEY  (필수)
+  OPENAI_API_KEY  (필수)
 `)
       process.exit(0)
     }
@@ -144,43 +144,57 @@ Options:
   return args
 }
 
-// ═══════════════ Anthropic API Call ═══════════════
-async function callClaude({ model, system, userMessage, apiKey }) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+// ═══════════════ OpenAI API Call ═══════════════
+async function callOpenAI({ model, system, userMessage, apiKey }) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      'authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model,
-      max_tokens: 8000,
-      system,
-      messages: [{ role: 'user', content: userMessage }],
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: userMessage },
+      ],
+      // JSON 객체 모드
+      response_format: { type: 'json_object' },
+      // 신규 모델(gpt-5 계열)은 max_completion_tokens 사용
+      max_completion_tokens: 8000,
     }),
   })
 
   if (!response.ok) {
     const err = await response.text()
-    throw new Error(`Anthropic API ${response.status}: ${err}`)
+    throw new Error(`OpenAI API ${response.status}: ${err}`)
   }
 
   const data = await response.json()
-  const text = data.content?.[0]?.text ?? ''
-  return { text, usage: data.usage }
+  const text = data.choices?.[0]?.message?.content ?? ''
+  return {
+    text,
+    usage: {
+      input_tokens: data.usage?.prompt_tokens,
+      output_tokens: data.usage?.completion_tokens,
+    },
+  }
 }
 
 // ═══════════════ JSON Extraction ═══════════════
 function extractJson(text) {
-  // JSON 배열 찾기 (```json ... ``` 또는 [...] 직접)
+  // OpenAI JSON 모드는 객체를 반환. { "events": [...] } 형태 기대.
+  // 호환성을 위해 ```json 펜스 케이스도 지원.
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/)
   const raw = fenceMatch ? fenceMatch[1] : text
-  const arrStart = raw.indexOf('[')
-  const arrEnd = raw.lastIndexOf(']')
-  if (arrStart < 0 || arrEnd < 0) throw new Error('JSON 배열을 찾을 수 없음')
-  const jsonStr = raw.slice(arrStart, arrEnd + 1)
-  return JSON.parse(jsonStr)
+  const trimmed = raw.trim()
+  const parsed = JSON.parse(trimmed)
+  // 배열이면 그대로, { events: [...] }이면 꺼냄
+  if (Array.isArray(parsed)) return parsed
+  if (Array.isArray(parsed.events)) return parsed.events
+  if (Array.isArray(parsed.data)) return parsed.data
+  if (Array.isArray(parsed.items)) return parsed.items
+  throw new Error('응답에 events 배열이 없음. 루트 키: ' + Object.keys(parsed).join(', '))
 }
 
 // ═══════════════ Schema Validation ═══════════════
@@ -256,23 +270,23 @@ function formatAsTS(events) {
 // ═══════════════ Main ═══════════════
 async function main() {
   const args = parseArgs(process.argv)
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    console.error('ERROR: ANTHROPIC_API_KEY 환경변수가 설정되지 않음')
-    console.error('  export ANTHROPIC_API_KEY=sk-ant-...')
+    console.error('ERROR: OPENAI_API_KEY 환경변수가 설정되지 않음')
+    console.error('  export OPENAI_API_KEY=sk-proj-...')
     process.exit(1)
   }
 
-  const model = args.model ?? 'claude-sonnet-4-5'
+  const model = args.model ?? 'gpt-5.4-nano'
 
-  // 유저 프롬프트 구성
-  let request = `다음 조건으로 EventTemplate ${args.count}개를 JSON 배열로 생성해주세요.\n\n`
+  // 유저 프롬프트 구성 — OpenAI JSON 모드는 루트가 객체여야 함
+  let request = `다음 조건으로 EventTemplate ${args.count}개를 생성해주세요.\n\n`
   if (args.category) request += `- 카테고리: ${args.category}\n`
   if (args.sectors) request += `- 주로 영향받는 섹터: ${args.sectors.join(', ')}\n`
   request += `- 최소 난이도: ${args.minDifficulty}\n`
   if (args.withFake) request += `- 각 이벤트는 반드시 fakeVariants 1개 이상 포함\n`
   request += `\n다양한 유형과 강도의 뉴스를 만들어주세요. 기존 예시와 중복되지 않게.`
-  request += `\n\n반드시 순수 JSON 배열만 출력하세요. 설명문이나 마크다운 헤더 없이.`
+  request += `\n\n출력 형식: { "events": [EventTemplate, ...] } 형태의 순수 JSON만.`
 
   const system = `당신은 한국 주식시장 전문 뉴스 편집자입니다. 교육용 트레이딩 게임 "Sell The News"의 뉴스 콘텐츠를 생성합니다.
 
@@ -280,11 +294,12 @@ ${SCHEMA_DESC}
 
 참고 예시 2건:
 ${JSON.stringify(FEW_SHOT_EXAMPLES, null, 2)}
-`
+
+반드시 { "events": [...] } 형태의 JSON 객체를 반환하세요.`
 
   console.log(`🎯 생성 시작: ${args.count}개 이벤트, 모델: ${model}`)
   const start = Date.now()
-  const { text, usage } = await callClaude({ model, system, userMessage: request, apiKey })
+  const { text, usage } = await callOpenAI({ model, system, userMessage: request, apiKey })
   const duration = ((Date.now() - start) / 1000).toFixed(1)
 
   console.log(`📡 API 응답 수신 (${duration}s)`)
