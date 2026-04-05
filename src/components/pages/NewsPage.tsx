@@ -64,6 +64,7 @@ export function NewsPage({ news, freshness, unlockedSkills, onNavigateToTrading 
   const hasDeepNews = unlockedSkills.includes('deep_news')
   const hasFactCheck = unlockedSkills.includes('fact_check')
   const hasSourceTracking = unlockedSkills.includes('source_tracking')
+  const hasNoiseFilter = unlockedSkills.includes('noise_filter')
 
   return (
     <div className="news-v2">
@@ -109,6 +110,11 @@ export function NewsPage({ news, freshness, unlockedSkills, onNavigateToTrading 
             {/* ═══ Tier 3: 시장 소음 ═══ */}
             {noise.length > 0 && (
               <div className="news-v2-noise-section">
+                {hasNoiseFilter && (
+                  <div className="px-3 py-1 mb-1 text-[10px] text-bal-green font-bold">
+                    노이즈 필터 활성
+                  </div>
+                )}
                 <button className="news-v2-noise-toggle" onClick={() => setNoiseExpanded(!noiseExpanded)}>
                   <span className="news-v2-noise-label">시장 소음</span>
                   <span className="news-v2-noise-count">{noise.length}건</span>

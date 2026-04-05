@@ -22,6 +22,7 @@ export function NewsCardMain({ news, unlockedSkills }: NewsCardMainProps) {
   const hasStaleDetection = unlockedSkills.includes('stale_detection')
   const hasBiasWarning = unlockedSkills.includes('bias_warning')
   const hasConflictDetection = unlockedSkills.includes('conflict_detection')
+  const hasSocialAnalysis = unlockedSkills.includes('social_analysis')
 
   const reliabilityGrade = hasFactCheck ? getReliabilityGrade(news.reliability) : null
   const fakeProbability = hasSourceTracking ? getFakeProbability(news) : null
@@ -53,7 +54,7 @@ export function NewsCardMain({ news, unlockedSkills }: NewsCardMainProps) {
       <p className="mb-3 text-xs leading-relaxed text-bal-text-dim">{news.content}</p>
 
       {/* 스킬 경고 */}
-      {(fakeProbability !== null || isStale || isBiasTrap || isConflict) && (
+      {(fakeProbability !== null || isStale || isBiasTrap || isConflict || (hasSocialAnalysis && news.source === 'social')) && (
         <div className="mb-3 space-y-1">
           {fakeProbability !== null && (
             <SkillAlert
@@ -64,6 +65,12 @@ export function NewsCardMain({ news, unlockedSkills }: NewsCardMainProps) {
           {isStale && <SkillAlert text="선반영 감지" level="warn" />}
           {isBiasTrap && <SkillAlert text="편향 경고" level="warn" />}
           {isConflict && <SkillAlert text="이해충돌 감지" level="danger" />}
+          {hasSocialAnalysis && news.source === 'social' && (
+            <SkillAlert
+              text={`SNS 신뢰도: ${(news.reliability * 100).toFixed(0)}%`}
+              level={news.reliability < 0.4 ? 'danger' : news.reliability < 0.6 ? 'warn' : 'safe'}
+            />
+          )}
         </div>
       )}
 
