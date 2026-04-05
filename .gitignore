@@ -38,3 +38,11 @@ npx
 docs/superpowers/
 .superpowers/
 screenshots/
+
+# Generated event drafts (review before adding to events.ts)
+scripts/output/*.ts
+scripts/output/raw-*.txt
+
+# Playtest screenshots (project root)
+agent*.png
+reference-*.png
