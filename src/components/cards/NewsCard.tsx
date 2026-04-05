@@ -1,6 +1,8 @@
 import type { NewsCard as NewsCardType, SectorImpact, NewsSource } from '../../data/types'
 import { getSourceLabel } from '../../engine/news'
 import { SECTOR_LABELS } from '../../data/constants'
+import { useGameStore } from '../../stores/gameStore'
+import { getMetaUpgradeCount } from '../../data/metaUpgrades'
 
 const SECTOR_LABELS_ALL = { ...SECTOR_LABELS, all: '전체' } as const
 
@@ -78,7 +80,9 @@ export default function NewsCard({ news, index = 0, unlockedSkills = [] }: NewsC
   const hasBiasWarning = unlockedSkills.includes('bias_warning')
   const hasConflictDetection = unlockedSkills.includes('conflict_detection')
 
-  const reliabilityGrade = hasFactCheck ? getReliabilityGrade(news.reliability) : null
+  const meta = useGameStore(s => s.meta)
+  const accuracyBonus = getMetaUpgradeCount(meta, 'news_accuracy_1') * 0.1
+  const reliabilityGrade = hasFactCheck ? getReliabilityGrade(Math.min(1, news.reliability + accuracyBonus)) : null
   const fakeProbability = hasSourceTracking ? getFakeProbability(news) : null
   const isStale = hasStaleDetection && news.fakeType === 'stale_news'
   const isBiasTrap = hasBiasWarning && news.fakeType === 'bias_trap'

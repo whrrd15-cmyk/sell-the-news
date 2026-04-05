@@ -2,6 +2,8 @@ import { useCallback, useRef } from 'react'
 import type { NewsCard as NewsCardType } from '../../data/types'
 import { getSourceLabel } from '../../engine/news'
 import { CATEGORY_LABELS } from '../../data/constants'
+import { useGameStore } from '../../stores/gameStore'
+import { getMetaUpgradeCount } from '../../data/metaUpgrades'
 import {
   getSourceBadge, getReliabilityGrade, getFakeProbability,
   ImpactTag, SkillAlert,
@@ -24,7 +26,9 @@ export function NewsArticleView({ news, unlockedSkills, onBack }: NewsArticleVie
   const hasBiasWarning = unlockedSkills.includes('bias_warning')
   const hasConflictDetection = unlockedSkills.includes('conflict_detection')
 
-  const reliabilityGrade = hasFactCheck ? getReliabilityGrade(news.reliability) : null
+  const meta = useGameStore(s => s.meta)
+  const accuracyBonus = getMetaUpgradeCount(meta, 'news_accuracy_1') * 0.1
+  const reliabilityGrade = hasFactCheck ? getReliabilityGrade(Math.min(1, news.reliability + accuracyBonus)) : null
   const fakeProbability = hasSourceTracking ? getFakeProbability(news) : null
   const isStale = hasStaleDetection && news.fakeType === 'stale_news'
   const isBiasTrap = hasBiasWarning && news.fakeType === 'bias_trap'

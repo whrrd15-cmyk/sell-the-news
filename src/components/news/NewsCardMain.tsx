@@ -1,5 +1,7 @@
 import type { NewsCard as NewsCardType } from '../../data/types'
 import { getSourceLabel } from '../../engine/news'
+import { useGameStore } from '../../stores/gameStore'
+import { getMetaUpgradeCount } from '../../data/metaUpgrades'
 import {
   getSourceBadge, getOverallImpact, getAccentColor,
   getReliabilityGrade, getFakeProbability,
@@ -24,7 +26,9 @@ export function NewsCardMain({ news, unlockedSkills }: NewsCardMainProps) {
   const hasConflictDetection = unlockedSkills.includes('conflict_detection')
   const hasSocialAnalysis = unlockedSkills.includes('social_analysis')
 
-  const reliabilityGrade = hasFactCheck ? getReliabilityGrade(news.reliability) : null
+  const meta = useGameStore(s => s.meta)
+  const accuracyBonus = getMetaUpgradeCount(meta, 'news_accuracy_1') * 0.1
+  const reliabilityGrade = hasFactCheck ? getReliabilityGrade(Math.min(1, news.reliability + accuracyBonus)) : null
   const fakeProbability = hasSourceTracking ? getFakeProbability(news) : null
   const isStale = hasStaleDetection && news.fakeType === 'stale_news'
   const isBiasTrap = hasBiasWarning && news.fakeType === 'bias_trap'

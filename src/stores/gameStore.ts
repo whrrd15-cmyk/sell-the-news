@@ -27,7 +27,7 @@ import { generateTurnNews } from '../engine/news'
 import { rollSpecialEvent, QUIZ_EVENTS } from '../data/specialEvents'
 import { rollBreakingNews } from '../data/breakingNews'
 import { rollWeeklyRule } from '../data/weeklyRules'
-import { loadMetaProgress, saveMetaProgress, getStartingCashBonus, getStartingRPBonus } from '../data/metaUpgrades'
+import { loadMetaProgress, saveMetaProgress, getStartingCashBonus, getStartingRPBonus, getMetaUpgradeCount } from '../data/metaUpgrades'
 import { writeSaveData, deleteSaveData, type SaveData } from '../utils/save'
 import { generateShopItems } from '../data/items'
 import { STOCKS } from '../data/stocks'
@@ -1016,11 +1016,16 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   unlockSkill: (skillId, cost) => {
-    const { portfolio, unlockedSkills } = get()
+    const { portfolio, unlockedSkills, meta } = get()
     if (unlockedSkills.includes(skillId)) return
-    if (portfolio.reputationPoints < cost) return
+
+    // 메타 업그레이드: 스킬 할인
+    const discountLevel = getMetaUpgradeCount(meta, 'skill_discount_1')
+    const discountedCost = Math.floor(cost * (1 - 0.15 * discountLevel))
+
+    if (portfolio.reputationPoints < discountedCost) return
     set({
-      portfolio: awardReputation(portfolio, -cost),
+      portfolio: awardReputation(portfolio, -discountedCost),
       unlockedSkills: [...unlockedSkills, skillId],
     })
   },
