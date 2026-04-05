@@ -76,6 +76,7 @@ interface GameState {
   activeEffects: string[]
   revealedNewsIds: string[]
   revealedBestStockId: string | null
+  highlightedNewsId: string | null  // market_intuition 스킬
   predictions: Record<string, 'up' | 'down'> | null
   lastTrade: { stockId: string; type: 'buy' | 'sell'; amount: number; price: number; prevPosition: { shares: number; avgBuyPrice: number } | null } | null
   lastTradeError: string | null
@@ -208,6 +209,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeEffects: [],
   revealedNewsIds: [],
   revealedBestStockId: null,
+  highlightedNewsId: null,
   predictions: null,
   lastTrade: null,
   lastTradeError: null,
@@ -351,7 +353,21 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectStock: (stockId) => set({ selectedStockId: stockId }),
 
   advanceToNewsPhase: () => {
-    set({ phase: 'news' })
+    const { unlockedSkills, market } = get()
+    let bestStockHint: string | null = null
+
+    // 스킬: 내부자 정보 — 모멘텀 기반 최고 종목 힌트
+    if (unlockedSkills.includes('insider_info')) {
+      let bestMomentum = -Infinity
+      for (const hist of market.priceHistories) {
+        const prices = hist.prices
+        if (prices.length < 5) continue
+        const momentum = (prices[prices.length - 1] - prices[prices.length - 5]) / prices[prices.length - 5]
+        if (momentum > bestMomentum) { bestMomentum = momentum; bestStockHint = hist.stockId }
+      }
+    }
+
+    set({ phase: 'news', revealedBestStockId: bestStockHint })
   },
 
   advanceToInvestmentPhase: () => {
@@ -533,6 +549,32 @@ export const useGameStore = create<GameState>((set, get) => ({
       updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + interestEarned }
     }
 
+    // 스킬: 복리 효과 — 이자를 최대 포지션에 자동 재투자
+    if (unlockedSkills.includes('compound_interest') && interestEarned > 0 && updatedPortfolio.positions.length > 0) {
+      const largestPos = updatedPortfolio.positions.reduce((max, p) => {
+        const maxVal = max.shares * (newMarket.prices[max.stockId] || 0)
+        const pVal = p.shares * (newMarket.prices[p.stockId] || 0)
+        return pVal > maxVal ? p : max
+      })
+      const price = newMarket.prices[largestPos.stockId] || 0
+      if (price > 0) {
+        const extraShares = interestEarned / price
+        updatedPortfolio = {
+          ...updatedPortfolio,
+          cash: updatedPortfolio.cash - interestEarned,
+          positions: updatedPortfolio.positions.map(p =>
+            p.stockId === largestPos.stockId
+              ? {
+                  ...p,
+                  shares: p.shares + extraShares,
+                  avgBuyPrice: ((p.avgBuyPrice * p.shares) + (price * extraShares)) / (p.shares + extraShares),
+                }
+              : p
+          ),
+        }
+      }
+    }
+
     // 손실 보험 효과 적용
     const { activeEffects } = get()
     let insuranceCompensation = 0
@@ -596,6 +638,22 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (curr > prev) {
           const extraGain = (curr - prev) * pos.shares * gainMult
           updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + extraGain }
+        }
+      }
+    }
+
+    // 스킬: 포트폴리오 헤지 — 3개 이상 섹터 보유 시 손실 20% 감소
+    if (unlockedSkills.includes('portfolio_hedge')) {
+      const heldSectors = new Set(
+        updatedPortfolio.positions.map(p => STOCKS.find(s => s.id === p.stockId)?.sector).filter(Boolean)
+      )
+      if (heldSectors.size >= 3) {
+        const valueAfterHedge = updatedPortfolio.cash + updatedPortfolio.positions.reduce(
+          (s, p) => s + (newMarket.prices[p.stockId] || 0) * p.shares, 0
+        )
+        const turnLoss = valueBefore - valueAfterHedge
+        if (turnLoss > 0) {
+          updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + turnLoss * 0.2 }
         }
       }
     }
@@ -669,11 +727,23 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     updatedPortfolio = awardReputation(updatedPortfolio, rpEarned)
 
+    // 스킬: 시장 감각 — 가장 큰 영향 뉴스 하이라이트
+    let highlightedNewsId: string | null = null
+    if (unlockedSkills.includes('market_intuition')) {
+      let maxImpact = 0
+      for (const n of currentNews) {
+        if (!n.isReal) continue
+        const totalImpact = (n.actualImpact || []).reduce((s, i) => s + Math.abs(i.impact), 0)
+        if (totalImpact > maxImpact) { maxImpact = totalImpact; highlightedNewsId = n.id }
+      }
+    }
+
     // 캐스케이드: 시뮬 후 포트폴리오 가치
     const valueAfter = updatedPortfolio.cash + updatedPortfolio.positions.reduce((s, p) => s + (newMarket.prices[p.stockId] || 0) * p.shares, 0)
 
     set({
       phase: 'result',
+      highlightedNewsId,
       market: newMarket,
       portfolio: updatedPortfolio,
       autoTradeRules: newAutoTradeRules,
@@ -861,6 +931,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeEffects: [],
       revealedNewsIds: revealedIds,
       revealedBestStockId: bestStockId,
+      highlightedNewsId: null,
       predictions: null,
       lastTrade: null,
       lastTradeError: null,
