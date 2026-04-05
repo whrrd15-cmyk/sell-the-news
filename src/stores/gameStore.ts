@@ -411,7 +411,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   executeBuy: (stockId, amount) => {
-    const { portfolio, market, unlockedSkills } = get()
+    const { portfolio, market, unlockedSkills, tradeHistory, totalFees } = get()
     const price = market.prices[stockId]
     if (price == null || price <= 0) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
@@ -422,9 +422,23 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({ lastTradeError: '잔액이 부족하거나 매수 수량이 없습니다.' })
       return
     }
+    // 체결 수량·수수료 계산 (buyStock 내부 로직과 동일)
+    const TRADE_FEE = Math.max(0.001, 0.005 - feeReduction)
+    const executedShares = Math.floor(amount / (price * (1 + TRADE_FEE)))
+    const feePaid = executedShares * price * TRADE_FEE
+    const ticker = STOCKS.find(s => s.id === stockId)?.ticker ?? stockId
+    const gameTime = useTimeStore.getState().gameTime
+    const record: TradeRecord = {
+      id: `trade_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      timestamp: formatWeekDay(gameTime),
+      stockId, ticker, side: 'buy',
+      quantity: executedShares, price, fee: feePaid,
+    }
     set({
       portfolio: newPortfolio,
       lastTradeError: null,
+      tradeHistory: [record, ...tradeHistory].slice(0, 200),
+      totalFees: totalFees + feePaid,
       lastTrade: {
         stockId, type: 'buy', amount, price,
         prevPosition: prevPosition ? { shares: prevPosition.shares, avgBuyPrice: prevPosition.avgBuyPrice } : null,
@@ -433,7 +447,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   executeSell: (stockId, shares) => {
-    const { portfolio, market, currentWeeklyRule, unlockedSkills } = get()
+    const { portfolio, market, currentWeeklyRule, unlockedSkills, tradeHistory, totalFees, realizedPnL } = get()
     // 주간 규칙: 매도 금지
     if (currentWeeklyRule?.effect.type === 'no_selling') return
     const price = market.prices[stockId]
@@ -446,9 +460,27 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({ lastTradeError: '보유 수량이 부족합니다.' })
       return
     }
+    // 체결 수량·수수료·실현손익 계산
+    const TRADE_FEE = Math.max(0.001, 0.005 - feeReduction)
+    const executedShares = Math.min(shares, prevPosition?.shares ?? 0)
+    const feePaid = executedShares * price * TRADE_FEE
+    const avgBuyPrice = prevPosition?.avgBuyPrice ?? 0
+    const pnl = executedShares * (price - avgBuyPrice) - feePaid
+    const ticker = STOCKS.find(s => s.id === stockId)?.ticker ?? stockId
+    const gameTime = useTimeStore.getState().gameTime
+    const record: TradeRecord = {
+      id: `trade_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      timestamp: formatWeekDay(gameTime),
+      stockId, ticker, side: 'sell',
+      quantity: executedShares, price, fee: feePaid,
+      realizedPnL: pnl,
+    }
     set({
       portfolio: newPortfolio,
       lastTradeError: null,
+      tradeHistory: [record, ...tradeHistory].slice(0, 200),
+      totalFees: totalFees + feePaid,
+      realizedPnL: realizedPnL + pnl,
       lastTrade: {
         stockId, type: 'sell', amount: shares, price,
         prevPosition: prevPosition ? { shares: prevPosition.shares, avgBuyPrice: prevPosition.avgBuyPrice } : null,

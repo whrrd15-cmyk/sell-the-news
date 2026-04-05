@@ -512,6 +512,16 @@ export function TradingTerminal() {
         </div>
         <div className="loading-text">{statusText}</div>
         <div className="loading-percent">{progress}%</div>
+        {progress >= 100 && market && (
+          <button
+            type="button"
+            onClick={() => setLoadingDone(true)}
+            className="mt-4 px-6 py-2 bg-bal-green/20 border-2 border-bal-green text-bal-green font-bold rounded hover:bg-bal-green/30 transition-colors animate-pulse"
+            aria-label="게임 시작"
+          >
+            시작 ▶
+          </button>
+        )}
       </div>
     )
   }
@@ -535,10 +545,14 @@ export function TradingTerminal() {
           {/* ═══ HUD 바 (모든 페이지 공통) ═══ */}
           <div className="trading-hud" data-guide="hud">
             <div className="trading-hud-left">
-              <BalChip color="gold" label="현금">${Math.floor(portfolio.cash).toLocaleString()}</BalChip>
-              <BalChip color={isPositive ? 'green' : 'red'} label="수익률">
-                {isPositive ? '+' : ''}{(totalReturn * 100).toFixed(1)}%
-              </BalChip>
+              <span title="현재 보유 현금 (매도 대금 포함)">
+                <BalChip color="gold" label="현금">${Math.floor(portfolio.cash).toLocaleString()}</BalChip>
+              </span>
+              <span title="총 수익률 = (현금 + 보유종목 평가액 - 초기자본) / 초기자본. 미실현 손익 포함.">
+                <BalChip color={isPositive ? 'green' : 'red'} label="총 수익률">
+                  {isPositive ? '+' : ''}{(totalReturn * 100).toFixed(1)}%
+                </BalChip>
+              </span>
               <BalChip color="purple" label="RP">{portfolio.reputationPoints}</BalChip>
             </div>
 
@@ -550,13 +564,19 @@ export function TradingTerminal() {
                   {session.isOpen ? '장중' : session.preMarket ? '장전' : '장후'}
                 </span>
               </div>
-              <div className="trading-speed-controls">
-                {(['paused', '1x', '2x', '4x'] as const).map(s => (
-                  <button key={s}
-                    className={`trading-speed-btn ${speed === s ? 'trading-speed-btn--active' : ''}`}
-                    onClick={() => setSpeed(s)}
-                  >{s === 'paused' ? '⏸' : s}</button>
-                ))}
+              <div className="trading-speed-controls" role="group" aria-label="게임 속도 조절">
+                {(['paused', '1x', '2x', '4x'] as const).map(s => {
+                  const label = s === 'paused' ? '일시정지' : `${s} 배속`
+                  return (
+                    <button key={s}
+                      className={`trading-speed-btn ${speed === s ? 'trading-speed-btn--active' : ''}`}
+                      onClick={() => setSpeed(s)}
+                      aria-label={label}
+                      aria-pressed={speed === s}
+                      title={label}
+                    >{s === 'paused' ? '⏸' : s}</button>
+                  )
+                })}
               </div>
               <div className="trading-quarter-bar">
                 <div className="trading-quarter-fill" style={{ width: `${quarterProgress * 100}%` }} />

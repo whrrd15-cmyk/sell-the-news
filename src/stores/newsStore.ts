@@ -96,9 +96,11 @@ export const useNewsStore = create<NewsStoreState>((set, get) => ({
   },
 
   handleClockEvents: (events, gameTime) => {
-    const { weeklyPool, publishedNews, freshness } = get()
-    let newPublished = [...publishedNews]
-    const newFreshness = { ...freshness }
+    let currentPool = get().weeklyPool
+    let newPublished = [...get().publishedNews]
+    const newFreshness = { ...get().freshness }
+    // 이미 발행된 ID 추적 (배치 내 중복 발행 방지)
+    const publishedIds = new Set(newPublished.map(n => n.id))
     let changed = false
 
     for (const event of events) {
@@ -109,12 +111,14 @@ export const useNewsStore = create<NewsStoreState>((set, get) => ({
         }
         changed = true
 
-        // 스케줄된 뉴스 발행 체크
-        const newPool = weeklyPool.map(sn => {
+        // 스케줄된 뉴스 발행 체크 — 로컬 pool을 갱신하여 배치 중복 방지
+        currentPool = currentPool.map(sn => {
           if (sn.published) return sn
+          if (publishedIds.has(sn.card.id)) return { ...sn, published: true }
           if (gameTime.day >= sn.publishAtDay && gameTime.hour >= sn.publishAtHour) {
             // 발행!
             newPublished = [sn.card, ...newPublished]
+            publishedIds.add(sn.card.id)
             newFreshness[sn.card.id] = 1.0
 
             // 뉴스의 실제 영향을 시장에 적용
@@ -130,10 +134,6 @@ export const useNewsStore = create<NewsStoreState>((set, get) => ({
           }
           return sn
         })
-
-        if (newPool !== weeklyPool) {
-          set({ weeklyPool: newPool })
-        }
       }
 
       if (event.type === 'WEEK_END') {
@@ -146,7 +146,7 @@ export const useNewsStore = create<NewsStoreState>((set, get) => ({
     if (changed) {
       const { readNewsIds } = get()
       const unreadCount = newPublished.filter(n => !readNewsIds.has(n.id)).length
-      set({ publishedNews: newPublished, freshness: newFreshness, unreadCount })
+      set({ weeklyPool: currentPool, publishedNews: newPublished, freshness: newFreshness, unreadCount })
     }
   },
 

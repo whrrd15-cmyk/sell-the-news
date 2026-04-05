@@ -31,10 +31,13 @@ export function TradePanel({
   const [quantity, setQuantity] = useState(0)
   const [showAutoTrade, setShowAutoTrade] = useState(true)
 
-  const maxBuy = useMemo(() =>
-    currentPrice > 0 ? Math.floor(portfolio.cash / currentPrice) : 0,
-    [portfolio.cash, currentPrice]
-  )
+  const maxBuy = useMemo(() => {
+    if (currentPrice <= 0) return 0
+    // 수수료 반영: buyStock 엔진 로직과 동일 (기본 0.5%, forex_hedge 시 0.2%)
+    const feeReduction = unlockedSkills.includes('forex_hedge') ? 0.003 : 0
+    const feeRate = Math.max(0.001, 0.005 - feeReduction)
+    return Math.floor(portfolio.cash / (currentPrice * (1 + feeRate)))
+  }, [portfolio.cash, currentPrice, unlockedSkills])
   const maxSell = position?.shares ?? 0
   const maxQty = mode === 'buy' ? maxBuy : maxSell
   const orderAmount = quantity * currentPrice
@@ -263,10 +266,10 @@ export function TradePanel({
 
             {/* 수익률 (포지션 있을 때) */}
             {mode === 'sell' && positionReturn !== null && (
-              <div className="text-[10px] text-center">
-                <span className="text-bal-text-dim">평단 ${position!.avgBuyPrice.toFixed(0)} → </span>
+              <div className="text-[10px] text-center" title="평단가 = 매수 평균 단가. 수익률은 현재가 대비 평단가 기준 미실현 손익.">
+                <span className="text-bal-text-dim">매수 평단 ${position!.avgBuyPrice.toFixed(2)} → </span>
                 <span className={`font-bold ${positionReturn >= 0 ? 'text-bal-green' : 'text-bal-red'}`}>
-                  {positionReturn >= 0 ? '+' : ''}{(positionReturn * 100).toFixed(1)}%
+                  {positionReturn >= 0 ? '+' : ''}{(positionReturn * 100).toFixed(1)}% (미실현)
                 </span>
               </div>
             )}
