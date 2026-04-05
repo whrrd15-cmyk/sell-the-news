@@ -544,6 +544,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
+    // VIX 헤지: 최대 손실 -5% 캡
+    if (activeEffects.includes('volatility_cap')) {
+      const valueAfterVol = updatedPortfolio.cash + updatedPortfolio.positions.reduce(
+        (s, p) => s + (newMarket.prices[p.stockId] || 0) * p.shares, 0
+      )
+      const maxLoss = valueBefore * 0.05
+      if (valueBefore - valueAfterVol > maxLoss) {
+        const compensation = (valueBefore - valueAfterVol) - maxLoss
+        updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + compensation }
+      }
+    }
+
     // 저주 아이템 다운사이드 처리
     for (const cursed of equippedCursedItems) {
       switch (cursed.cursedEffect?.downside) {
@@ -795,6 +807,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     // 저주 아이템 업사이드: 모든 뉴스 진위 공개
     let revealedIds: string[] = []
     if (equippedCursedItems.some(i => i.cursedEffect?.upside === 'reveal_all_news_truth')) {
+      revealedIds = news.map(n => n.id)
+    }
+
+    // 프라임 브로커 채널: activeEffect 있으면 뉴스 전체 공개
+    const { activeEffects: prevEffects } = get()
+    if (prevEffects.includes('reveal_all_actual_impacts')) {
       revealedIds = news.map(n => n.id)
     }
 
@@ -1109,6 +1127,31 @@ export const useGameStore = create<GameState>((set, get) => ({
         updates.predictions = preds
         break
       }
+
+      case 'emergency_fund':
+        if (updatedPortfolio.cash < 500) {
+          updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + 2000 }
+        }
+        break
+
+      case 'sector_trend_hint':
+        updates.activeEffects = [...activeEffects, 'sector_trend_hint']
+        break
+
+      case 'volatility_cap':
+        updates.activeEffects = [...activeEffects, 'volatility_cap']
+        break
+
+      case 'reveal_all_actual_impacts':
+        updates.revealedNewsIds = currentNews.map(n => n.id)
+        updates.activeEffects = [...activeEffects, 'reveal_all_actual_impacts']
+        break
+
+      default:
+        // Unknown effect — restore item to prevent silent consumption
+        newInventory.splice(idx, 0, item)
+        console.warn(`Unknown item effect: ${item.effect}`)
+        break
     }
 
     updates.portfolio = updatedPortfolio
