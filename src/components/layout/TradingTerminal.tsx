@@ -83,7 +83,7 @@ export function TradingTerminal() {
     equippedCursedItems, tradesThisTurn,
     autoTradeRules, addAutoTradeRule, removeAutoTradeRule,
     executeBuy, executeSell,
-    pickedStockId,
+    pickedStockId, advanceWeek,
   } = useGameStore()
 
   const [marketTrades, setMarketTrades] = useState<MarketTrade[]>([])
@@ -127,13 +127,17 @@ export function TradingTerminal() {
       handleClockEvents(events, gt.tickCount)
       newsHandleClock(events, gt)
 
-      // 주 시작 시 뉴스 풀 생성
       for (const e of events) {
+        // 주 시작 시 뉴스 풀 생성
         if (e.type === 'WEEK_END' || e.type === 'MARKET_OPEN') {
           const config = useGameStore.getState().runConfig
           if (config) {
             generateWeekPool(gt.week, config, useMarketStore.getState().currentWeeklyRule)
           }
+        }
+        // 실시간 모드 주간 정산: turn++, RP 적립, 뉴스 갱신, 상점 체크
+        if (e.type === 'WEEK_END') {
+          useGameStore.getState().advanceWeek()
         }
       }
     })

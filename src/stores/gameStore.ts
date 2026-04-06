@@ -153,6 +153,9 @@ interface GameState {
   loadDebugResult: () => void
   loadDebugResultSuccess: () => void
 
+  // 실시간 모드 주간 정산
+  advanceWeek: () => void
+
   // 저주 아이템
   equippedCursedItems: Item[]
 
@@ -1404,6 +1407,126 @@ export const useGameStore = create<GameState>((set, get) => ({
         learnedConcepts: ['분산 투자의 중요성', '가짜 뉴스 식별법', '펌프앤덤프 패턴'],
       },
     })
+  },
+
+  // ═══ 실시간 모드 주간 정산 ═══
+  // WEEK_END 이벤트 시 TradingTerminal에서 호출
+  // turnを 1 올리고, 뉴스 갱신, RP 적립, 상점 체크, 패시브 스킬 적용
+  advanceWeek: () => {
+    const {
+      turn, maxTurns, runConfig, portfolio, unlockedSkills,
+      pendingChainEvents, usedEventIds, usedWeeklyRuleIds,
+      equippedCursedItems,
+    } = get()
+    const newTurn = turn + 1
+
+    // 분기 종료 체크 (13주)
+    if (newTurn > maxTurns) {
+      // isQuarterEnded는 timeStore에서 처리됨 — 여기서는 turn만 갱신
+      set({ turn: newTurn })
+      return
+    }
+
+    // 뉴스 수정자
+    const hasExtraNews = equippedCursedItems.some(i => i.cursedEffect?.upside === 'extra_news')
+    const hasFomoBellDown = equippedCursedItems.some(i => i.cursedEffect?.downside === 'increase_fake_news_10')
+    const cursedNewsModifiers = (hasExtraNews || hasFomoBellDown)
+      ? { extraNews: hasExtraNews, extraFakeRatio: hasFomoBellDown ? 0.10 : 0 }
+      : undefined
+
+    // 위클리 룰
+    const weeklyRule = rollWeeklyRule(newTurn, runConfig.runNumber, usedWeeklyRuleIds)
+    const newUsedWeeklyRuleIds = weeklyRule
+      ? [...usedWeeklyRuleIds, weeklyRule.id]
+      : usedWeeklyRuleIds
+
+    // 뉴스 생성 (gameStore.currentNews 갱신)
+    const { news, newChainEvents } = generateTurnNews(
+      runConfig, newTurn, pendingChainEvents, usedEventIds,
+      weeklyRule, undefined, cursedNewsModifiers,
+    )
+    const remainingChains = pendingChainEvents.filter(c => c.triggersAtTurn > newTurn)
+
+    // RP 적립 (기본 2 + 보유종목 상승 보너스)
+    const rtMarket = useMarketStore.getState().market
+    const prices = rtMarket?.prices ?? get().market.prices
+    let rpEarned = 2
+    for (const pos of portfolio.positions) {
+      const hist = rtMarket?.priceHistories?.find(h => h.stockId === pos.stockId)
+      if (hist && hist.prices.length >= 2) {
+        const prev = hist.prices[hist.prices.length - 2]
+        const curr = hist.prices[hist.prices.length - 1]
+        if (curr > prev) rpEarned += 1
+      }
+    }
+    // RP 부스터
+    if (get().activeEffects.includes('double_rp_next')) rpEarned *= 2
+
+    let updatedPortfolio = awardReputation({ ...portfolio }, rpEarned)
+
+    // 패시브: 배당
+    if (unlockedSkills.includes('dividend')) {
+      for (const pos of updatedPortfolio.positions) {
+        const price = prices[pos.stockId] || 0
+        updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + price * pos.shares * 0.005 }
+      }
+    }
+    // 패시브: 이자
+    if (unlockedSkills.includes('interest')) {
+      const interestCap = 25
+      const interest = Math.min(Math.floor(updatedPortfolio.cash / 2000), interestCap)
+      if (interest > 0) {
+        updatedPortfolio = { ...updatedPortfolio, cash: updatedPortfolio.cash + interest }
+      }
+    }
+
+    // 시장 상황 갱신
+    const updatedConditions = detectSectorConditions(rtMarket ?? get().market)
+
+    // 상점 체크
+    const isBenchmark = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('benchmark')
+    const isEarlyRun = runConfig.runNumber <= 2
+    const isFirstShop = isEarlyRun && newTurn === 3 && !get().visitedShopThisTurn
+    const shopInterval = isBenchmark ? 4 : 13
+    if (isFirstShop || newTurn % shopInterval === 0) {
+      const shopItems = generateShopItems(runConfig.runNumber, 3)
+      set({
+        turn: newTurn,
+        portfolio: updatedPortfolio,
+        currentNews: news,
+        pendingChainEvents: [...remainingChains, ...newChainEvents],
+        currentWeeklyRule: weeklyRule,
+        usedWeeklyRuleIds: newUsedWeeklyRuleIds,
+        marketConditions: updatedConditions,
+        activeEffects: [],
+        screen: 'shop',
+        shopItems,
+        shopSource: 'auto' as const,
+        shopRerollCount: 0,
+        quizLoanUsedThisShop: false,
+        visitedShopThisTurn: false,
+      })
+      return
+    }
+
+    // 포트폴리오 가치 기록
+    const currentValue = getPortfolioValue(updatedPortfolio, prices)
+
+    set({
+      turn: newTurn,
+      portfolio: updatedPortfolio,
+      currentNews: news,
+      pendingChainEvents: [...remainingChains, ...newChainEvents],
+      currentWeeklyRule: weeklyRule,
+      usedWeeklyRuleIds: newUsedWeeklyRuleIds,
+      marketConditions: updatedConditions,
+      activeEffects: [],
+      visitedShopThisTurn: false,
+      portfolioValueHistory: [...get().portfolioValueHistory, currentValue],
+    })
+
+    // 자동 저장
+    autoSave(get())
   },
 
   loadDebugResultSuccess: () => {
