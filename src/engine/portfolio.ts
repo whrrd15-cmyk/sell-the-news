@@ -8,7 +8,8 @@ export function createInitialPortfolio(): Portfolio {
   return {
     cash: 10000,
     positions: [],
-    reputationPoints: 0,
+    // T2-C (밸런싱): 초기 RP 5 지급 — 초보자가 스킬 1개 즉시 해금 가능
+    reputationPoints: 5,
   }
 }
 

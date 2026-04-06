@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { motion } from 'motion/react'
 import { useGameStore } from '../../stores/gameStore'
+import { useMarketStore } from '../../stores/marketStore'
 import { getPortfolioValue, getTotalReturn } from '../../engine/portfolio'
 import { BalatroBackground } from '../effects/BalatroBackground'
 import { SFX, bgm } from '../../utils/sound'
@@ -9,9 +10,12 @@ const INITIAL_CASH = 10000
 
 export function ResultScreen() {
   const { portfolio, market, runConfig, stats, setScreen, startNewRun } = useGameStore()
+  const rtMarket = useMarketStore(s => s.market)
+  // 실시간 모드에서는 marketStore 가격 사용, 폴백으로 gameStore.market
+  const prices = rtMarket?.prices ?? market.prices
 
-  const portfolioValue = getPortfolioValue(portfolio, market.prices)
-  const totalReturn = getTotalReturn(portfolio, market.prices, INITIAL_CASH)
+  const portfolioValue = getPortfolioValue(portfolio, prices)
+  const totalReturn = getTotalReturn(portfolio, prices, INITIAL_CASH)
   const isSuccess = totalReturn >= runConfig.targetReturn
 
   useEffect(() => { bgm.fadeOut(1000) }, [])

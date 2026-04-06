@@ -100,7 +100,8 @@ export function calculateDangerLevel(
   portfolioReturn: number,
   quarterNumber: number,
 ): number {
-  const baseThreshold = 0.05
+  // T1-B (밸런싱): 임계값 0.05 → 0.10 — Run 1 목표(5%)와의 자기 충돌 해제
+  const baseThreshold = 0.10
   const sensitivity = 0.5 + quarterNumber * 0.1
   if (portfolioReturn <= baseThreshold) return 0
   const excess = portfolioReturn - baseThreshold
@@ -201,10 +202,10 @@ export function simulateTurn(
   // Lv1: 1.0, Lv2: 0.94, Lv3: 0.88, Lv4: 0.82, Lv5: 0.76, Lv6: 0.70, Lv7: 0.64, Lv8: 0.58
 
   for (const effect of state.activeEffects) {
-    // 뉴스 효과 점진 적용: 첫 턴 40%, 이후 점차 강해짐
+    // T1-D (밸런싱): 점진 적용 완화 — 첫턴 25% + 매턴 20% (4턴→7턴 완전반영)
     const maxDuration = Math.max(...effect.sectorImpacts.map(si => si.duration), 1)
     const elapsed = Math.max(0, maxDuration - effect.remainingTurns)
-    const rampFactor = Math.min(1, 0.4 + elapsed * 0.3)
+    const rampFactor = Math.min(1, 0.25 + elapsed * 0.20)
     for (const si of effect.sectorImpacts) {
       const scaled = si.impact > 0 ? si.impact * goodNewsDamping : si.impact
       const key = si.sector
@@ -510,9 +511,10 @@ export function tickMarket(
   // 섹터별 뉴스 보너스 (현재 활성 효과에서)
   const sectorBonus: Record<string, number> = {}
   for (const effect of state.activeEffects) {
+    // T1-D (밸런싱): ramp-in 완화
     const maxDur = Math.max(...effect.sectorImpacts.map(si => si.duration), 1)
     const elapsed = Math.max(0, maxDur - effect.remainingTurns)
-    const rampFactor = Math.min(1, 0.4 + elapsed * 0.3)
+    const rampFactor = Math.min(1, 0.25 + elapsed * 0.20)
     for (const si of effect.sectorImpacts) {
       if (si.sector === 'all') {
         for (const s of ['tech', 'energy', 'finance', 'consumer', 'healthcare']) {

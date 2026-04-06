@@ -32,6 +32,7 @@ import { writeSaveData, deleteSaveData, type SaveData } from '../utils/save'
 import { generateShopItems } from '../data/items'
 import { STOCKS } from '../data/stocks'
 import { useMacroStore } from './macroStore'
+import { useMarketStore } from './marketStore'
 import { useTimeStore } from './timeStore'
 import { formatWeekDay } from '../engine/clock'
 import { detectSectorConditions } from '../engine/marketCondition'
@@ -412,7 +413,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   executeBuy: (stockId, amount) => {
     const { portfolio, market, unlockedSkills, tradeHistory, totalFees } = get()
-    const price = market.prices[stockId]
+    // 실시간 가격 우선 사용 (marketStore가 있으면 live 가격, 없으면 gameStore.market fallback)
+    const rtMarket = useMarketStore.getState().market
+    const price = rtMarket?.prices[stockId] ?? market.prices[stockId]
     if (price == null || price <= 0) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
     const feeReduction = unlockedSkills.includes('forex_hedge') ? 0.003 : 0
@@ -450,7 +453,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { portfolio, market, currentWeeklyRule, unlockedSkills, tradeHistory, totalFees, realizedPnL } = get()
     // 주간 규칙: 매도 금지
     if (currentWeeklyRule?.effect.type === 'no_selling') return
-    const price = market.prices[stockId]
+    // 실시간 가격 우선 사용
+    const rtMarket = useMarketStore.getState().market
+    const price = rtMarket?.prices[stockId] ?? market.prices[stockId]
     if (price == null || price <= 0) return
     const prevPosition = portfolio.positions.find(p => p.stockId === stockId)
     const feeReduction = unlockedSkills.includes('forex_hedge') ? 0.003 : 0
@@ -839,8 +844,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       return
     }
 
-    // 상점 턴 체크 (매 13턴)
-    if (newTurn % 13 === 0) {
+    // 상점 턴 체크 (매 13턴, 벤치마크 모드에서는 매 4턴)
+    const shopInterval = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('benchmark') ? 4 : 13
+    if (newTurn % shopInterval === 0) {
       const shopItems = generateShopItems(runConfig.runNumber, 3)
       set({ screen: 'shop', turn: newTurn, shopItems, shopSource: 'auto' as const, shopRerollCount: 0, quizLoanUsedThisShop: false })
       return
