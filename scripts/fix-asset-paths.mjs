@@ -11,14 +11,15 @@ import path from 'node:path'
 const DIST = path.resolve('dist')
 const BASE = '/sell-the-news'
 
-// 치환 대상 (JS 문자열 내 절대 경로 — 쌍따옴표, 홑따옴표, 백틱 모두)
+// 치환 대상: public/ 하위 모든 디렉토리 (icons, audio, characters, cutscene, ui, images)
+const DIRS = 'icons|audio|characters|cutscene|ui|images'
 const REPLACEMENTS = [
-  [/"\/(icons|audio|images)\//g, `"${BASE}/$1/`],
-  [/"\/(icons|audio|images)"/g, `"${BASE}/$1"`],
-  [/'\/(icons|audio|images)\//g, `'${BASE}/$1/`],
-  [/'\/(icons|audio|images)'/g, `'${BASE}/$1'`],
-  [/`\/(icons|audio|images)\//g, `\`${BASE}/$1/`],
-  [/`\/(icons|audio|images)`/g, `\`${BASE}/$1\``],
+  [new RegExp(`"\\/(${DIRS})\\/`, 'g'), `"${BASE}/$1/`],
+  [new RegExp(`"\\/(${DIRS})"`, 'g'), `"${BASE}/$1"`],
+  [new RegExp(`'\\/(${DIRS})\\/`, 'g'), `'${BASE}/$1/`],
+  [new RegExp(`'\\/(${DIRS})'`, 'g'), `'${BASE}/$1'`],
+  [new RegExp(`\`\\/(${DIRS})\\/`, 'g'), `\`${BASE}/$1/`],
+  [new RegExp(`\`\\/(${DIRS})\``, 'g'), `\`${BASE}/$1\``],
 ]
 
 async function processFile(filePath) {
