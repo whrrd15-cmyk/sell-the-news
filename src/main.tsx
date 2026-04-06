@@ -3,8 +3,8 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
-// 벤치마크 모드: 디버그 훅 노출 (?benchmark=1 시에만)
-if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('benchmark')) {
+// 벤치마크 모드: 디버그 훅 노출 (DEV + ?benchmark=1 시에만, 프로덕션 빌드에서 tree-shake됨)
+if (import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('benchmark')) {
   import('./stores/gameStore').then(({ useGameStore }) => {
     ;(window as unknown as { __gameStore: typeof useGameStore }).__gameStore = useGameStore
   })
