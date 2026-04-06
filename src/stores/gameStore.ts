@@ -844,9 +844,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       return
     }
 
-    // 상점 턴 체크 (매 13턴, 벤치마크 모드에서는 매 4턴)
-    const shopInterval = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('benchmark') ? 4 : 13
-    if (newTurn % shopInterval === 0) {
+    // 상점 턴 체크
+    // v3: Run 1~2는 첫 상점 3주차 (이후 13주마다), Run 3+는 기존 13주마다
+    // 벤치마크 모드에서는 4주마다
+    const isBenchmark = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('benchmark')
+    const isEarlyRun = runConfig.runNumber <= 2
+    const isFirstShop = isEarlyRun && newTurn === 3 && !get().visitedShopThisTurn
+    const shopInterval = isBenchmark ? 4 : 13
+    if (isFirstShop || newTurn % shopInterval === 0) {
       const shopItems = generateShopItems(runConfig.runNumber, 3)
       set({ screen: 'shop', turn: newTurn, shopItems, shopSource: 'auto' as const, shopRerollCount: 0, quizLoanUsedThisShop: false })
       return

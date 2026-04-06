@@ -219,6 +219,11 @@ export function simulateTurn(
     }
   }
 
+  // v3: 섹터당 뉴스 효과 누적 cap (±0.05) — 편향 스파이럴 방지
+  for (const key of Object.keys(sectorBonus)) {
+    sectorBonus[key] = Math.max(-0.05, Math.min(0.05, sectorBonus[key]))
+  }
+
   // 팬데믹 주간: 패닉 즉시 주입
   if (weeklyRule?.effect.type === 'pandemic_week') {
     state = {
@@ -274,8 +279,8 @@ export function simulateTurn(
       ? rawMomentum * panicMult
       : rawMomentum * (1 + state.panicLevel * 0.05)
 
-    // 평균 회귀 (위험도 높으면 강화, 패닉 시에도 유지)
-    const meanRevStr = (0.04 + state.dangerLevel * 0.01) * (1 - state.panicLevel * 0.3)
+    // 평균 회귀 (v3: 4%→8% 기본 강도, 급락 후 반등 강화)
+    const meanRevStr = (0.08 + state.dangerLevel * 0.01) * (1 - state.panicLevel * 0.3)
     const meanReversion = ((stock.basePrice - currentPrice) / stock.basePrice) * meanRevStr
 
     // 랜덤 노이즈 (위험도 + 주간 규칙 반영)
@@ -526,6 +531,11 @@ export function tickMarket(
     }
   }
 
+  // v3: 섹터당 뉴스 효과 누적 cap
+  for (const key of Object.keys(sectorBonus)) {
+    sectorBonus[key] = Math.max(-0.005, Math.min(0.005, sectorBonus[key]))
+  }
+
   // 각 주식 가격 업데이트
   for (const stock of STOCKS) {
     if (stock.isETF) continue
@@ -543,8 +553,8 @@ export function tickMarket(
     // 군중 심리
     const herdEffect = state.herdSentiment * 0.0005
 
-    // 평균 회귀 (가격이 기준에서 멀어질수록 당김)
-    const meanReversionStrength = 0.005
+    // 평균 회귀 (v3: 0.005→0.01 강화, 급락 후 반등 가속)
+    const meanReversionStrength = 0.01
     const deviation = (currentPrice - stock.basePrice) / stock.basePrice
     const meanReversion = -deviation * meanReversionStrength
 
