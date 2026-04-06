@@ -109,6 +109,60 @@ export const BREAKING_NEWS_POOL: BreakingNewsData[] = [
       { sector: 'all', impact: 0.05, duration: 2 },
     ],
   },
+  // ═════════════════ LLM-generated batch ═════════════════
+  {
+    id: 'bn_earthquake_supply',
+    headline: '특보: 태평양 연안 강진, 반도체 공장 가동 중단',
+    body: '태평양 연안에서 규모 7.2 강진이 발생해 주요 반도체 공장 3곳의 생산라인이 긴급 가동 중단되었습니다. 공급 차질이 수주간 이어질 것으로 전망되며, 관련 부품 가격 급등이 예상됩니다.',
+    source: 'official',
+    category: 'disaster',
+    sectorImpacts: [
+      { sector: 'tech', impact: -0.18, duration: 4 },
+      { sector: 'consumer', impact: -0.05, duration: 2 },
+    ],
+  },
+  {
+    id: 'bn_crypto_regulation',
+    headline: '특보: 금융위, 가상자산 거래소 긴급 규제안 발표',
+    body: '금융위원회가 가상자산 거래소에 대한 긴급 규제안을 발표했습니다. 고객 자산 분리 보관 의무화, 레버리지 거래 제한 등이 포함되어 핀테크·크립토 관련 금융주에 영향이 예상됩니다.',
+    source: 'official',
+    category: 'government',
+    sectorImpacts: [
+      { sector: 'finance', impact: -0.15, duration: 3 },
+    ],
+  },
+  {
+    id: 'bn_green_deal',
+    headline: '특보: EU-한국 탄소중립 공동투자 100억 유로 합의',
+    body: 'EU와 한국이 탄소중립 기술 공동 투자에 100억 유로 규모의 합의를 달성했습니다. 신재생에너지, 수소 인프라, 전기차 배터리 분야에서 한국 기업의 수주 기회가 크게 늘어날 전망입니다.',
+    source: 'official',
+    category: 'geopolitics',
+    sectorImpacts: [
+      { sector: 'energy', impact: 0.20, duration: 4 },
+      { sector: 'tech', impact: 0.10, duration: 3 },
+    ],
+  },
+  {
+    id: 'bn_pandemic_variant',
+    headline: '특보: 신종 변이 바이러스 확산, WHO 경계 단계 상향',
+    body: 'WHO가 신종 변이 바이러스에 대한 경계 단계를 상향 조정했습니다. 각국 방역 강화 조치로 여행·소비 관련 업종에 타격이 예상되며, 반대로 바이오·헬스케어 업종에는 수혜가 전망됩니다.',
+    source: 'official',
+    category: 'disaster',
+    sectorImpacts: [
+      { sector: 'healthcare', impact: 0.15, duration: 3 },
+      { sector: 'consumer', impact: -0.12, duration: 3 },
+    ],
+  },
+  {
+    id: 'bn_merger_megadeal',
+    headline: '특보: 국내 2위 보험사, 1위 자산운용사 인수 발표',
+    body: '국내 2위 보험사가 1위 자산운용사를 5조 원에 인수한다고 발표했습니다. 금융업 대형 M&A로 업계 재편이 예상되며, 금융 섹터 전반에 단기 변동성이 확대될 전망입니다.',
+    source: 'financial',
+    category: 'economic',
+    sectorImpacts: [
+      { sector: 'finance', impact: 0.18, duration: 3 },
+    ],
+  },
 ]
 
 /**
