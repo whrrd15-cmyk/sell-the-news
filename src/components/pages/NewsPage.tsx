@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import type { NewsCard, EventCategory, Sector } from '../../data/types'
+import type { NewsCard, EventCategory, Sector, JudgmentType } from '../../data/types'
 import { getSourceLabel } from '../../engine/news'
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_ICONS, SECTOR_COLORS, SECTOR_LABELS, SOURCE_ICONS } from '../../data/constants'
 import { CausalityChain } from '../news/CausalityChain'
+import { useGameStore } from '../../stores/gameStore'
 
 /**
  * 뉴스 페이지 — 게임 플로우 중심 재설계
@@ -223,6 +224,9 @@ export function NewsPage({ news, freshness, unlockedSkills, onNavigateToTrading 
                   </div>
                 )}
 
+                {/* ═══ 뉴스 판단 (실시간 모드) ═══ */}
+                <RealtimeJudgment newsId={selectedNews.id} news={selectedNews} freshness={freshness[selectedNews.id] ?? 0} />
+
                 {/* 교육 노트 */}
                 {selectedNews.educationalNote && (
                   <div className="news-v2-edu">💡 {selectedNews.educationalNote}</div>
@@ -264,6 +268,140 @@ export function NewsPage({ news, freshness, unlockedSkills, onNavigateToTrading 
   )
 }
 
+// ═══ 실시간 뉴스 판단 ═══
+
+function RealtimeJudgment({ newsId, news, freshness }: { newsId: string; news: NewsCard; freshness: number }) {
+  const judgedNewsIds = useGameStore(s => s.judgedNewsIds)
+  const judgeNewsRealtime = useGameStore(s => s.judgeNewsRealtime)
+  const [sliderValue, setSliderValue] = useState(0)
+  const [result, setResult] = useState<{ rpEarned: number; accuracy: string } | null>(null)
+
+  const isJudged = judgedNewsIds.has(newsId)
+  const isExpired = freshness < 0.3
+  const canJudge = !isJudged && !isExpired
+
+  const handleConfirm = useCallback(() => {
+    const type: JudgmentType = sliderValue > 0 ? 'bullish' : sliderValue < 0 ? 'bearish' : 'bullish'
+    const res = judgeNewsRealtime(newsId, type, sliderValue / 100)
+    setResult(res)
+  }, [newsId, sliderValue, judgeNewsRealtime])
+
+  const handleFake = useCallback(() => {
+    const res = judgeNewsRealtime(newsId, 'fake', 0)
+    setResult(res)
+  }, [newsId, judgeNewsRealtime])
+
+  const handleSkip = useCallback(() => {
+    judgeNewsRealtime(newsId, 'skip', 0)
+    setResult({ rpEarned: 0, accuracy: 'skipped' })
+  }, [newsId, judgeNewsRealtime])
+
+  // 이미 판단 완료
+  if (isJudged && !result) {
+    return (
+      <div className="news-v2-modal-section" style={{ opacity: 0.5 }}>
+        <div className="text-[10px] text-bal-text-dim text-center">✅ 판단 완료</div>
+      </div>
+    )
+  }
+
+  // 결과 표시
+  if (result) {
+    const accuracyLabel: Record<string, string> = {
+      fake_correct: '🎯 가짜뉴스 정확 감별!',
+      strength: '🎯 방향 + 강도 적중!',
+      direction: '👍 방향 적중',
+      wrong: '❌ 오답',
+      skipped: '⏭️ 건너뜀',
+    }
+    const rpColor = result.rpEarned > 0 ? '#5ec269' : '#8888aa'
+    return (
+      <motion.div
+        className="news-v2-modal-section"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        style={{ background: `${rpColor}10`, border: `1px solid ${rpColor}30`, borderRadius: 8, padding: 12, textAlign: 'center' }}
+      >
+        <div className="text-sm font-bold" style={{ color: rpColor }}>
+          {accuracyLabel[result.accuracy] ?? result.accuracy}
+        </div>
+        {result.rpEarned > 0 && (
+          <div className="text-xs mt-1" style={{ color: '#9b72cf' }}>
+            +{result.rpEarned} RP 획득!
+          </div>
+        )}
+      </motion.div>
+    )
+  }
+
+  // 만료
+  if (isExpired) {
+    return (
+      <div className="news-v2-modal-section" style={{ opacity: 0.4 }}>
+        <div className="text-[10px] text-bal-text-dim text-center">⏰ 판단 기한 만료 (신선도 {(freshness * 100).toFixed(0)}%)</div>
+      </div>
+    )
+  }
+
+  // 판단 UI
+  return (
+    <div className="news-v2-modal-section" style={{ background: 'rgba(91,155,213,0.05)', border: '1px solid rgba(91,155,213,0.2)', borderRadius: 8, padding: 12 }}>
+      <div className="text-[11px] font-bold text-bal-blue mb-2">📊 이 뉴스를 어떻게 보십니까?</div>
+
+      {/* 슬라이더 */}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[9px] text-bal-red">악재</span>
+        <input
+          type="range"
+          min={-100}
+          max={100}
+          step={5}
+          value={sliderValue}
+          onChange={e => setSliderValue(Number(e.target.value))}
+          className="flex-1 accent-bal-blue"
+          style={{ height: 6 }}
+        />
+        <span className="text-[9px] text-bal-green">호재</span>
+      </div>
+
+      {/* 현재 값 표시 */}
+      <div className="text-center text-[10px] mb-3" style={{ color: sliderValue > 0 ? '#5ec269' : sliderValue < 0 ? '#e8534a' : '#8888aa' }}>
+        {sliderValue > 0 ? `호재 +${sliderValue}` : sliderValue < 0 ? `악재 ${sliderValue}` : '중립'}
+      </div>
+
+      {/* 버튼 */}
+      <div className="flex gap-2">
+        <button
+          onClick={handleFake}
+          className="flex-1 py-1.5 text-[10px] font-bold rounded transition-all"
+          style={{ background: 'rgba(232,83,74,0.15)', color: '#e8534a', border: '1px solid rgba(232,83,74,0.3)' }}
+        >
+          🚫 가짜뉴스
+        </button>
+        <button
+          onClick={handleConfirm}
+          disabled={sliderValue === 0}
+          className="flex-1 py-1.5 text-[10px] font-bold rounded transition-all disabled:opacity-30"
+          style={{ background: 'rgba(91,155,213,0.15)', color: '#5b9bd5', border: '1px solid rgba(91,155,213,0.3)' }}
+        >
+          ✅ 판단 확정
+        </button>
+        <button
+          onClick={handleSkip}
+          className="px-2 py-1.5 text-[10px] font-bold rounded transition-all"
+          style={{ background: 'rgba(136,136,170,0.1)', color: '#8888aa', border: '1px solid rgba(136,136,170,0.2)' }}
+        >
+          ⏭️
+        </button>
+      </div>
+
+      <div className="text-[8px] text-bal-text-dim text-center mt-1.5">
+        정확한 판단 = RP 획득 (방향+1, 강도+2, 가짜감별+3)
+      </div>
+    </div>
+  )
+}
+
 // ═══ 서브 컴포넌트 ═══
 
 function BreakingCard({ card, freshness, onClick }: { card: NewsCard; freshness: number; onClick: () => void }) {
@@ -286,12 +424,14 @@ function BreakingCard({ card, freshness, onClick }: { card: NewsCard; freshness:
 function StandardCard({ card, onClick }: { card: NewsCard; onClick: () => void }) {
   const catColor = CATEGORY_COLORS[card.category]
   const srcInfo = SOURCE_ICONS[card.source]
+  const isJudged = useGameStore(s => s.judgedNewsIds.has(card.id))
   return (
-    <button className="news-v2-standard" onClick={onClick} style={{ borderLeftColor: catColor }}>
+    <button className="news-v2-standard" onClick={onClick} style={{ borderLeftColor: catColor, opacity: isJudged ? 0.6 : 1 }}>
       <div className="news-v2-standard-meta">
         <span style={{ color: catColor }}>{CATEGORY_ICONS[card.category]}</span>
         <span className="news-v2-standard-source" style={{ color: srcInfo?.color }}>{srcInfo?.icon} {getSourceLabel(card.source)}</span>
         <span style={{ color: getReliabilityColor(card.reliability), fontSize: 9 }}>{getReliabilityStars(card.reliability)}</span>
+        {isJudged && <span style={{ fontSize: 9, color: '#5ec269' }}>✓판단</span>}
       </div>
       <div className="news-v2-standard-title">{card.headline}</div>
     </button>

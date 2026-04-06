@@ -186,6 +186,10 @@ interface GameState {
   allNewsJudged: boolean
   judgeNews: (newsId: string, type: JudgmentType, sliderValue: number) => void
   skipNews: (newsId: string) => void
+
+  // 실시간 모드 뉴스 판단
+  judgedNewsIds: Set<string>
+  judgeNewsRealtime: (newsId: string, type: JudgmentType, sliderValue: number) => { rpEarned: number; accuracy: string }
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -245,6 +249,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   newsJudgments: [],
   currentNewsIndex: 0,
   allNewsJudged: false,
+  judgedNewsIds: new Set<string>(),
 
   addAutoTradeRule: (rule) => set(s => ({
     autoTradeRules: [...s.autoTradeRules.filter(r => r.id !== rule.id), rule]
@@ -275,6 +280,72 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   skipNews: (newsId) => {
     get().judgeNews(newsId, 'skip', 0)
+  },
+
+  // 실시간 모드 뉴스 판단 — 즉시 RP 계산 + 지급
+  judgeNewsRealtime: (newsId, type, sliderValue) => {
+    const { judgedNewsIds, portfolio, currentNews, stats } = get()
+    if (judgedNewsIds.has(newsId)) return { rpEarned: 0, accuracy: 'already_judged' }
+
+    // 뉴스 찾기 (currentNews + newsStore 드립 모두 검색)
+    let news = currentNews.find(n => n.id === newsId)
+    if (!news) {
+      // dripNews에서 검색 — newsStore는 직접 접근 불가하므로 currentNews만 사용
+      return { rpEarned: 0, accuracy: 'not_found' }
+    }
+
+    let rpEarned = 0
+    let accuracy = 'wrong'
+
+    if (type === 'skip') {
+      accuracy = 'skipped'
+    } else if (type === 'fake') {
+      if (!news.isReal) {
+        rpEarned = 3
+        accuracy = 'fake_correct'
+        stats.fakeNewsDetected += 1
+      } else {
+        accuracy = 'wrong'
+      }
+    } else {
+      // bullish/bearish 판단
+      const dominantImpact = news.actualImpact.length > 0
+        ? news.actualImpact.reduce((max, si) => Math.abs(si.impact) > Math.abs(max.impact) ? si : max)
+        : null
+      const actualValue = dominantImpact?.impact ?? 0
+      const playerValue = sliderValue
+
+      const sameDirection = (playerValue > 0 && actualValue > 0) || (playerValue < 0 && actualValue < 0)
+      const strengthAccurate = Math.abs(playerValue - actualValue) <= 0.2
+
+      if (sameDirection && strengthAccurate) {
+        rpEarned = 2
+        accuracy = 'strength'
+        stats.correctPredictions += 1
+      } else if (sameDirection) {
+        rpEarned = 1
+        accuracy = 'direction'
+        stats.correctPredictions += 1
+      } else {
+        accuracy = 'wrong'
+      }
+    }
+
+    // RP 부스터
+    if (get().activeEffects.includes('double_rp_next') && rpEarned > 0) {
+      rpEarned *= 2
+    }
+
+    // 즉시 반영
+    const newJudgedIds = new Set(judgedNewsIds)
+    newJudgedIds.add(newsId)
+    set({
+      judgedNewsIds: newJudgedIds,
+      portfolio: rpEarned > 0 ? awardReputation(portfolio, rpEarned) : portfolio,
+      stats: { ...stats },
+    })
+
+    return { rpEarned, accuracy }
   },
 
   startNewRun: (runNumber = 1) => {
@@ -349,6 +420,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       newsJudgments: [],
       currentNewsIndex: 0,
       allNewsJudged: false,
+      judgedNewsIds: new Set<string>(),
     })
   },
 
